@@ -44,9 +44,9 @@ packer.init {
 --   endif
 -- endfunction
 -- can probably be replaced with lsp
--- call SourceWhenExist("/home/loki/loki/env/vim-misc/plugin/html.vim")
+-- call SourceWhenExist("/home/drake/drake/env/vim-misc/plugin/html.vim")
 -- for refactoring ruby
--- call SourceWhenExist("/home/loki/loki/env/vim-misc/plugin/extract-method.vim")
+-- call SourceWhenExist("/home/drake/drake/env/vim-misc/plugin/extract-method.vim")
 
 -- Install your plugins here
 packer.startup(function(use, use_rocks)
@@ -60,7 +60,7 @@ packer.startup(function(use, use_rocks)
   use 'antoinemadec/FixCursorHold.nvim'
   use "tpope/vim-repeat"
   use "triglav/vim-visual-increment"    -- increase numbers on multiple lines at once
-  use "tomtom/tlib_vim"                 -- provided string#Strip, used in the lokinote bullet style switching shortcut
+  use "tomtom/tlib_vim"                 -- provided string#Strip, used in the drakenote bullet style switching shortcut
   use "rcarriga/nvim-notify"
 
   -- which key
