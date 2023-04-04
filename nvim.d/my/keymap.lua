@@ -62,7 +62,7 @@ map("i", "jk", "<esc>", opts)
 map("i", "qw", "<esc>:w<cr>", opts)
 map("i", "<c-l>", "<c-x><c-l>", opts)
 map("i", "<c-n>", "<Cmd>lua require('cmp').complete()<CR>", opts)
-cancel("i", {"<esc>", "<del>", "<cr>", "<up>", "<down>", "<left>", "<right>"})
+cancel("i", {"<esc>", "<del>", "<up>", "<down>", "<left>", "<right>"})
 
 -- Visual
 map("x", "<c-j>", "<gv", opts)

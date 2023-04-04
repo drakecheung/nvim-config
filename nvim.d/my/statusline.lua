@@ -16,6 +16,7 @@ hardline.setup {
     {class = 'med', item = require('hardline.parts.filename').get_item},
     '%<',
     {class = 'med', item = '%='},
+    {class = 'med', item = require('hardline.parts.cwd').get_item},
     {class = 'low', item = require('hardline.parts.wordcount').get_item, hide = 100},
     {class = 'error', item = require('hardline.parts.lsp').get_error},
     {class = 'warning', item = require('hardline.parts.lsp').get_warning},
