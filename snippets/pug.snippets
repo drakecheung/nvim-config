@@ -46,40 +46,28 @@ snippet col
 			label: "Delete",
 		}).btn4.blue
 snippet tableext "table-ext with custom column"
-	mixin colActions({row, value})
-		+post-btn({
-			url: `\${baseUrl}/customers/\${row._id}/delete`,
-			confirm: "Are you sure to delete this account?",
-			label: "Delete",
-		}).btn4.blue
-	+table-ext({
-		table: accounts,
-		columns: {
-			actions: "colActions",
-		},
-	})
-		.flex-r-jsb-ac
-			h3 Accounts
-			div
-				button.btn4.mr3.blue(
-					data-submenu={
-						mixin: "p-new-account",
-						dir: "bottom-left",
-						data: {a: 1},
-					}
-				) New account
-	mixin mobileRow(row, idx)
-		.px3.py2.flex-r-jsb-ac(
-			style=idx > 0 ? "border-top: 1px solid #ccc;" : ""
-		)
-			div= row.name
-	// in tableext
-		onlyPaging: isMobile,
-		mobileRow: "mobileRow",
+	.info-wrap
+		mixin colActions({row, value})
+			-
+				const btn = {
+					url: \`\${baseUrl}/account/\${row._id}/delete\`,
+					confirm: "Are you sure to delete this account?",
+					label: "Delete",
+				}
+			+post-btn(btn).btn4.blue
+		-
+			const meta = {
+				table,
+				columns: {
+					created_at: "colGenericTime",
+					actions: "colActions",
+				},
+			}
+		+table-ext(meta)
 snippet data-navframe
 	data-navframe={
 		name: "framename",
-		url: `\${baseUrl}/frameurl`,
+		url: \`\${baseUrl}/frameurl\`,
 		// dir: "center",
 		// msg: "Loading data ...",
 		// width: 600,
@@ -115,3 +103,5 @@ snippet grid
 	+grid(columns="$0").gx1.gy1
 snippet json
 	pre= JSON.stringify($0, null, 2)
+snippet ssicon
+  +ssicon("vaadin_puzzle-piece", rem(17))

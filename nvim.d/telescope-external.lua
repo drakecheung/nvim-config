@@ -1,5 +1,6 @@
 local pickers = require "telescope.pickers"
 local finders = require "telescope.finders"
+local themes = require "telescope.themes"
 local conf = require("telescope.config").values
 local actions = require "telescope.actions"      -- :help telescope.actions
 local action_state = require "telescope.actions.state"
@@ -46,6 +47,19 @@ M.init = function(cmd, opts)
       return true
     end,
   }):find()
+end
+
+M.open = function(script)
+  return function()
+    M.init(script, themes.get_dropdown{
+      layout_strategy = 'vertical',
+      layout_config = {
+        height = 0.95,
+        --[[ width = 0.95 ]]
+      },
+      borderchars = { '─', '│', '─', '│', '╭', '╮', '╯', '╰' },
+    })
+  end
 end
 
 -- :lua require("telescope-fromcmd").fromcmd(require("telescope.themes").get_dropdown{})

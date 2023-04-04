@@ -14,7 +14,7 @@ if not ok3 then
 end
 
 require("luasnip.loaders.from_snipmate").lazy_load()
-require("luasnip.loaders.from_lua").load({paths = "~/loki/nvim-config/snippets"})
+require("luasnip.loaders.from_lua").load({paths = "~/.config/nvim/snippets"})
 
 --   פּ ﯟ   some other good icons
 local kind_icons = {
