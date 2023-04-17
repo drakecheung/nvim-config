@@ -171,7 +171,8 @@ snippet tableext "tableExt"
 		options: {
 			id: "t",
 			sortable: ["name", "state"],
-			sort: ["_created_at", "asc"],
+			sort: ["_created_at", "desc"],
+			sortIdCol: ["_created_at", "desc"],
 			filterable: {
 				name: "freetext",
 				state: "select",
@@ -388,3 +389,9 @@ snippet pg "pg test with console.log"
 	\`);
 snippet pry "debugger"
 	debugger;
+snippet test "jest test"
+	test("testcase1", async () => {
+		expect(1 + 1).toBe(2);
+	});
+snippet expect "jest expect"
+	expect(1 + 1).toBe(2);
