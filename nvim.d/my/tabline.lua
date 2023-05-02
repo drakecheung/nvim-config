@@ -20,7 +20,6 @@ bufferline.setup {
     show_buffer_icons = true,
     color_icons = true,
     show_buffer_close_icons = false,
-    show_buffer_default_icon = false,
     show_close_icon = false,
     -- separator_style = "thick",
     separator_style = { '', '' },
