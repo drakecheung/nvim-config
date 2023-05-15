@@ -155,6 +155,16 @@ packer.startup(function(use, use_rocks)
   -- noremap <Leader>t# :Tabularize /#<cr>
   -- noremap <Leader>t> :Tabularize /=><cr>
 
+  use 'subnut/nvim-ghost.nvim'
+  vim.cmd [[
+    let g:nvim_ghost_autostart = 0
+    augroup nvim_ghost_user_autocommands
+      au User txti.es setfiletype python
+      au User *github.com setfiletype markdown
+    augroup END
+  ]]
+  -- start manually with :GhostTextStart
+
   use {'akinsho/flutter-tools.nvim', requires = 'nvim-lua/plenary.nvim'}
 
   use({
