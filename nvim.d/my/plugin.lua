@@ -50,7 +50,11 @@ packer.init {
 
 -- Install your plugins here
 packer.startup(function(use, use_rocks)
-  -- if not auto-installed, install with command      :PackerRocks install f-strings
+  -- if not auto-installed, install with command
+  -- :PackerRocks install lua-cjson
+  -- :PackerRocks install f-strings
+  -- if found error in missing loader module, untar lua-5.1.tar in this repo to replace:
+  --   ~/.cache/nvim/packer_hererocks/2.1.0-beta3/share/lua/5.1
   use_rocks 'lua-cjson'
   use_rocks 'f-strings'
 
