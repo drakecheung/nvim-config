@@ -61,8 +61,8 @@ gdbus call \
         a=>a.window_type === 0 &&
         a.get_workspace().active &&
         a.get_wm_class() != 'app' &&
-        a.get_wm_class() != 'UnrealEditor' &&
         a.get_wm_class() != 'Surfshark' &&
+        // a.get_wm_class() != 'UnrealEditor' &&
         a.get_wm_class() != 'org.gnome.Nautilus'
       );
     const idx = (wins.findIndex(w=>w.has_focus()) + 1) % wins.length;
