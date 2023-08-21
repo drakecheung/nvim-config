@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+if [[ "$1" = "" ]]; then
+  echo "Expected a config file path but missing"
+  echo "e.g. multi config.yaml"
+  exit 1
+fi
+
+NODE_PATH=$(npm root -g) multi.js $1

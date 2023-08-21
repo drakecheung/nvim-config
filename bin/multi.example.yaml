@@ -1,0 +1,29 @@
+- tag: long1
+  cmd: >
+    echo long workload that end in 3 seconds;
+    sleep 2;
+    echo long workload ended
+
+- tag: afterhook1
+  after:
+    - long1
+  cmd: >
+    echo afterhook started;
+    sleep 1;
+    echo afterhook done
+
+- tag: long2
+  cmd: >
+    echo long workload that end in 3 seconds;
+    sleep 2;
+    echo long workload ended;
+    ls dwqdwqd
+
+- tag: afterhook2
+  after:
+    - long2
+  cmd: >
+    echo afterhook started;
+    sleep 1;
+    echo afterhook done
+
