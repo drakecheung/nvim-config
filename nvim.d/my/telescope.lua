@@ -60,7 +60,9 @@ telescope.setup {
     },
   },
   pickers = {
-    find_files = style,
+    find_files = vim.tbl_deep_extend("keep", style, {
+      find_command = { "rg", "--ignore", "-L", "--hidden", "--files" },
+    }),
     grep_string = style,
     live_grep = style,
     git_status = {
