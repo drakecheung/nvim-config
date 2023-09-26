@@ -52,14 +52,12 @@ _G.console_ctl = function(cmd, size)
 end
 
 _G.exec_in_split = function(cmd, tmux_arg)
-  local cmd2 = "echo " .. cmd .. "; " .. cmd
-  local cmd3 = "tmux splitw " .. (tmux_arg or "") .. " \"zsh -c '[ -f .envrc ] && source .envrc;" .. cmd2 .. "'\""
+  local cmd3 = "tmux splitw " .. (tmux_arg or "") .. " \"zsh -c '[ -f .envrc ] && source .envrc;" .. cmd .. "'\""
   run_cmd(cmd3)
 end
 
 _G.exec_in_tab = function(cmd, tmux_arg)
-  local cmd2 = "echo " .. cmd .. "; " .. cmd
-  local cmd3 = "tmux new-window " .. (tmux_arg or "") .. " \"zsh -c '[ -f .envrc ] && source .envrc;" .. cmd2 .. "'\""
+  local cmd3 = "tmux new-window " .. (tmux_arg or "") .. " \"zsh -c '[ -f .envrc ] && source .envrc;" .. cmd .. "'\""
   run_cmd(cmd3)
 end
 
