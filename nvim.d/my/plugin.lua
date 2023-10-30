@@ -64,7 +64,7 @@ packer.startup(function(use, use_rocks)
   use 'antoinemadec/FixCursorHold.nvim'
   use "tpope/vim-repeat"
   use "triglav/vim-visual-increment"    -- increase numbers on multiple lines at once
-  use "tomtom/tlib_vim"                 -- provided string#Strip, used in the drakenote bullet style switching shortcut
+  use "tomtom/tlib_vim"                 -- provided string#Strip, used in the lokinote bullet style switching shortcut
   use "rcarriga/nvim-notify"
 
   -- which key
