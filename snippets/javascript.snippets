@@ -1,3 +1,11 @@
+snippet pane.on "off then on"
+	pane.on("click.${1:select-node}", "[data-$1$0]", async (e) => {
+		if (e.which !== 1) {
+			return;
+		}
+		const \$btn = \$(e.currentTarget);
+		return false;
+	});
 snippet for "for-in (object)"
 	/* eslint-disable fp/no-loops */
 	/* eslint-disable no-restricted-syntax */
@@ -75,17 +83,6 @@ snippet todo "todo"
 	// @TODO loki: $0
 snippet promise "new Promise"
 	return new Promise((resolve, reject) => {
-		$0
-	})
-snippet onclick "on click"
-	$body.on('click.$1', '[data-$1]', (e) => {
-		const $this = $(e.currentTarget);
-		$this.data('$1')
-	});
-snippet onc "on click"
-	onClick('$1', (e) => {
-		const $this = $(e.currentTarget);
-		$this.data('$1')
 		$0
 	})
 snippet dragable "mousedown"
@@ -395,13 +392,3 @@ snippet test "jest test"
 	});
 snippet expect "jest expect"
 	expect(1 + 1).toBe(2);
-snippet offon "off then on"
-	\$pane
-		.off("click.delrecords", "[data-cmdb-delete-records]")
-		.on("click.delrecords", "[data-cmdb-delete-records]", async (e) => {
-			if (e.which !== 1) {
-				return;
-			}
-			const \$btn = \$(e.currentTarget);
-			return false;
-		});
