@@ -299,9 +299,9 @@ snippet jsonb_object_agg "jsonb_object_agg - aggregate as jsonb object"
 snippet aa "anonymous async (for testing js)"
 	const fn1 = async () => {
 		$0
-		return 123;
+		console.log(123);
 	};
-	fn1().then(console.log);
+	fn1().then(R.identity);
 snippet reduce "ramda reduce"
 	R.reduce((arr, item) => R.append(item, arr), [], [1, 2, 3, 4])
 snippet dev "eslint disable import"
