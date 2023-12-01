@@ -28,7 +28,6 @@ Environment
 
   nodejs 18, eslint
     sudo apt remove nodejs libnode-dev libnode72
-    curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
     sudo apt install -y nodejs
     sudo npm install -g eslint
 
