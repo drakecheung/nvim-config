@@ -392,3 +392,22 @@ snippet test "jest test"
 	});
 snippet expect "jest expect"
 	expect(1 + 1).toBe(2);
+snippet return "res.return"
+	res.return({
+		render: {
+			title: "My accounts",
+			frame: "my-accounts",
+			mixin: "my-accounts",
+			params: {
+				abc: 123,
+			},
+		},
+		redirect: "/",
+		flash: {
+			info: "Default account updated",
+      "reload-on-navframe-close": true,
+      "reload-on-navframe-close": "frame;url",
+			"reload-navframe": "my-accounts",
+      "close-uid-prompt-by-navframe": "new-k8s-job",
+		},
+	});

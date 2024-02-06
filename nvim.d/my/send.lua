@@ -31,11 +31,15 @@ M.send_line_to_next_pane = function(line)
 end
 
 M.send_line_to_next_or_prev_pane = function(line)
-  local pane = M.run_shell("tmux list-panes | grep active -A1 | sed -n 2p"):gsub(": .*", "")
-  if pane == "" then
+  if _G.console_pane_flag == "-b" then
     M.send_line_to_prev_pane(line)
   else
-    M.send_line_to_pane(line, pane)
+    local pane = M.run_shell("tmux list-panes | grep active -A1 | sed -n 2p"):gsub(": .*", "")
+    if pane == "" then
+      M.send_line_to_prev_pane(line)
+    else
+      M.send_line_to_pane(line, pane)
+    end
   end
 end
 

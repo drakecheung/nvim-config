@@ -1,3 +1,5 @@
+snippet cl
+	- console.log($0)
 snippet form
 	form.relative(action="/" method="post")
 		button.btn(type="submit") Submit
@@ -92,11 +94,14 @@ snippet data-submenu
 			name: "Item name",
 	}
 snippet post-btn
-	+post-btn({
-		url: \`\${baseUrl}/update\`,
-		data: {},
-		confirm: "Are you sure?",
-	}).btn1
+	-
+		const btnParams = {
+			url: \`\${baseUrl}/update\`,
+			data: {},
+			confirm: "Are you sure to delete this record?",
+		}
+	+post-btn(btnParams).btn4.btn-danger.flex-r-jfs-ac
+		+ssicon("vaadin_trash", rem(15))
 snippet __
 	__("$0")
 snippet grid
