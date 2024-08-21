@@ -3,6 +3,11 @@ if not status_ok then
   return
 end
 
+-- local status_ok2, commentstring_configs = pcall(require, "ts-context-commentstring")
+-- if not status_ok2 then
+--   return
+-- end
+
 -- now postresql is still under development
 -- when ready, we can edit the below file to support embedded sql in javascript
 -- vi ~/.local/share/nvim/site/pack/packer/start/nvim-treesitter/queries/ecma/injections.scm
