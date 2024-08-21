@@ -4,6 +4,9 @@ local themes = require "telescope.themes"
 local conf = require("telescope.config").values
 local actions = require "telescope.actions"      -- :help telescope.actions
 local action_state = require "telescope.actions.state"
+
+-- sai lua-cjson
+-- sudo ln -s /usr/lib/x86_64-linux-gnu/lua /usr/local/lib/lua
 local json = require "cjson"
 
 local M = {}

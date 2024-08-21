@@ -107,6 +107,7 @@ cmp.setup {
     end,
   },
   sources = cmp.config.sources({
+    -- { name = 'fittencode', group_index = 1 },
     { name = "luasnip" },
     { name = "nvim_lsp" },
     { name = "nvim_lua" },

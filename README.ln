@@ -21,6 +21,15 @@ General key bindings (applied to both vim and tmux)
   Ctrl-c         = cancel / exit in zsh, vim, and tmux
 
 Environment
+  solve 'too many opened files'
+    check
+      ulimit -n
+    fix (ubuntu 24.04)
+      svi /etc/sysctl.conf
+        fs.inotify.max_user_watches=524288
+        fs.inotify.max_user_instances=524288
+      reboot
+
   libssl.so is missing (ubuntu 22.04)
     wget http://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2.17_amd64.deb
     sudo dpkg -i libssl1.1_1.1.1f-1ubuntu2.17_amd64.deb

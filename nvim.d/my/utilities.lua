@@ -38,7 +38,7 @@ _G.console_ctl = function(cmd, size)
     end
     local actual_cmd = "zsh -c 'echo leftpane > /dev/null && " .. cmd .. "'"
     local subed = string.gsub(cmd, '"', '\\"')
-    local percentage = size and "-p" .. size or "-p32"
+    local percentage = size and "-l" .. size .. "%" or "-l32%"
 
     if string.find(left_pane, subed, 0, true) then
       kill_pane()

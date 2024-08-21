@@ -64,6 +64,12 @@ map("n", "<leader>u", function()
 end, opts)
 cancel("n", {">>", "<<", ":", "/", "?", "Q", "qq", "<bs>", "<del>", "<cr>", "<up>", "<down>", "<left>", "<right>"})
 
+map("n", "<c-h>", '<cmd>lua vim.diagnostic.goto_prev({ float = false })<cr>', opts)
+map("n", "<c-l>", '<cmd>lua vim.diagnostic.goto_next({ float = false })<cr>', opts)
+map("n", "<c-m-]>", "<cmd>lua vim.lsp.buf.hover()<CR>", opts)
+map("n", "<c-]>", "<cmd>lua vim.lsp.buf.definition()<CR>", opts)
+map("n", "<leader>rn", "<cmd>lua vim.lsp.buf.rename()<CR>", opts)
+
 -- Insert
 map("i", "jk", "<esc>", opts)
 map("i", "qw", "<esc>:w<cr>", opts)

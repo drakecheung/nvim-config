@@ -45,13 +45,14 @@ end
 
 M.send_current_line = function(dir)
   local line = vim.api.nvim_get_current_line() .. "\n"
-  if (dir or "--") == "--" then
-    M.send_line_to_next_or_prev_pane(line)
-  elseif dir == "next" then
-    M.send_line_to_next_pane(line)
-  else
-    M.send_line_to_prev_pane(line)
-  end
+  M.send_line_to_next_pane(line)
+  -- if (dir or "--") == "--" then
+  --   M.send_line_to_next_or_prev_pane(line)
+  -- elseif dir == "next" then
+  --   M.send_line_to_next_pane(line)
+  -- else
+  --   M.send_line_to_prev_pane(line)
+  -- end
 end
 
 M.send_last_line = function()

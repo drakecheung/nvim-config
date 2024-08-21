@@ -48,9 +48,6 @@ nvim_tree.setup {
     side = "left",
     number = false,
     relativenumber = false,
-    mappings = {
-      custom_only = false,
-    },
   },
   filters = {
     dotfiles = false,

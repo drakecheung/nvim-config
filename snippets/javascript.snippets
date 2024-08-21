@@ -50,8 +50,8 @@ snippet .map "jquery map"
 	.map((i, node) => {
 		$0
 	})
-snippet cl "console.log"
-	console.log($0);
+# snippet cl "console.log"
+# 	console.log($0);
 snippet	ci "console.log with util.inspect"
 	const util = require('util')
 	console.log(util.inspect($0, false, null, true));
@@ -197,8 +197,12 @@ snippet pgdo "postgres do block"
 			end
 		$$
 	\`
+snippet /*` "postgres testing block"
+	/* \`
+		select * from user_profile
+	\` */
 snippet pglog "postgres log"
-	raise notice '$1 = %', $1;
+	raise warning '$1 = %', $1;
 snippet pgif "postgres if"
 	if a then
 	elsif b then
@@ -218,8 +222,8 @@ snippet table "new table"
 	await knex.schema.createTable("$1", (table) => {
 		table.string("id").primary();
 	});
-	await autoId("$1");
-	await autoUpdatedAt("$1");
+	await KH.autoId("$1");
+	await KH.autoUpdatedAt("$1");
 	// down
 	await knex.schema.dropTableIfExists("$1");
 snippet cond "cond"
@@ -411,3 +415,9 @@ snippet return "res.return"
       "close-uid-prompt-by-navframe": "new-k8s-job",
 		},
 	});
+snippet logChanges "automigrate log changes"
+	logChanges: {
+		name: ["name"],
+		exclude: ["id", "updated_at", "created_at"],
+		sensitive: [],
+	},

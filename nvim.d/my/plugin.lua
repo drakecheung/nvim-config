@@ -55,8 +55,12 @@ packer.startup(function(use, use_rocks)
   -- :PackerRocks install f-strings
   -- if found error in missing loader module, untar lua-5.1.tar in this repo to replace:
   --   ~/.cache/nvim/packer_hererocks/2.1.0-beta3/share/lua/5.1
-  use_rocks 'lua-cjson'
-  use_rocks 'f-strings'
+  -- get error message by manually run
+  --   python hererocks.py --verbose -j 2.1.1713484068 -r latest ~/.cache/nvim/packer_hererocks/2.1.1713484068
+  -- FileNotFoundError: [Errno 2] No such file or directory: 'src/lua.h'
+  --sai liblua5.1-0-dev
+  -- use_rocks 'lua-cjson'
+  -- use_rocks 'f-strings'
 
   use "wbthomason/packer.nvim"          -- Have packer manage itself
   use "nvim-lua/popup.nvim"             -- An implementation of the Popup API from vim in Neovim
@@ -66,6 +70,81 @@ packer.startup(function(use, use_rocks)
   use "triglav/vim-visual-increment"    -- increase numbers on multiple lines at once
   use "tomtom/tlib_vim"                 -- provided string#Strip, used in the lokinote bullet style switching shortcut
   use "rcarriga/nvim-notify"
+
+  -- ai code completion
+  -- use {
+  --   'Exafunction/codeium.vim',
+  --   config = function()
+  --     vim.g.codeium_disable_bindings = 1
+  --     vim.keymap.set('i', '<Tab>', function () return vim.fn['codeium#Accept']() end, { expr = true, silent = true })
+  --     vim.keymap.set('i', '<c-]>', function() return vim.fn['codeium#CycleCompletions'](1) end, { expr = true, silent = true })
+  --     vim.keymap.set('i', '<c-[>', function() return vim.fn['codeium#CycleCompletions'](-1) end, { expr = true, silent = true })
+  --     vim.keymap.set('i', '<c-g>', function() return vim.fn['codeium#Clear']() end, { expr = true, silent = true })
+  --   end
+  -- }
+  -- use {
+  --   'luozhiya/fittencode.nvim',
+  --   config = function()
+  --     require('fittencode').setup({
+  --       inline_completion = {
+  --         -- Enable inline code completion.
+  --         enable = true,
+  --       },
+  --       -- Set the mode of the completion.
+  --       -- Available options:
+  --       -- - 'inline' (default)
+  --       -- - 'source'
+  --       completion_mode = 'inline',
+  --       use_default_keymaps = true,
+  --       log = {
+  --         level = vim.log.levels.WARN,
+  --       },
+  --     })
+  --     vim.opt.updatetime = 200
+  --   end,
+  -- }
+
+  -- curl 127.0.0.1:28080/generate \
+  --   -X POST \
+  --   -d '{"inputs":"one plus three equal","parameters":{"max_new_tokens":256}}' \
+  --   -H 'Content-Type: application/json'
+  -- use {
+  --   'huggingface/llm.nvim',
+  --   config = function()
+  --     require('llm').setup({
+  --       backend = "tgi",
+  --       url = "http://127.0.0.1:28080/generate",
+  --       request_body = {
+  --         parameters = {
+  --           temperature = 0.2,
+  --           top_p = 0.95,
+  --         }
+  --       },
+  --       -- tokens_to_clear = { "<|endoftext|>" },
+  --       -- fim = {
+  --       --   enabled = true,
+  --       --   prefix = "<fim_prefix>",
+  --       --   middle = "<fim_middle>",
+  --       --   suffix = "<fim_suffix>",
+  --       -- },
+  --       tokens_to_clear = { "<EOT>" },
+  --       fim = {
+  --         enabled = true,
+  --         prefix = "<PRE> ",
+  --         middle = " <MID>",
+  --         suffix = " <SUF>",
+  --       },
+  --       -- model = "codellama/CodeLlama-7b-hf",
+  --       context_window = 4096,
+  --       -- tokenizer = {
+  --       --   repository = "codellama/CodeLlama-7b-hf",
+  --       -- },
+  --       -- lsp = {
+  --       --   bin_path = vim.api.nvim_call_function("stdpath", { "data" }) .. "/mason/bin/llm-ls",
+  --       -- },
+  --     })
+  --   end
+  -- }
 
   -- which key
   use "folke/which-key.nvim"
@@ -96,8 +175,12 @@ packer.startup(function(use, use_rocks)
   use "saadparwaiz1/cmp_luasnip"
 
   -- LSP
-  use "neovim/nvim-lspconfig"
-  use "williamboman/nvim-lsp-installer"
+  use {
+    "williamboman/mason.nvim",
+    "williamboman/mason-lspconfig.nvim",
+    "neovim/nvim-lspconfig",
+  }
+  -- use "williamboman/nvim-lsp-installer"
   use "b0o/schemastore.nvim"
   use "jose-elias-alvarez/null-ls.nvim"
 

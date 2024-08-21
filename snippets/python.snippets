@@ -32,9 +32,17 @@ snippet if "if"
 	elif $3:
 		$4
 snippet for "for .. in .."
-	for ${1:i} in ${2:pool}:
+	for key_elem in dict_or_array:
+		$0
+snippet for "for .. in .. indexed"
+	for idx, x in enumerate(xs):
 		$0
 snippet cl
 	import logging
 	_logger = logging.getLogger(__name__)
 	_logger.warn("mylog $0")
+snippet exit
+	import sys
+	sys.exit()
+snippet debug
+	import ipdb; ipdb.set_trace()
