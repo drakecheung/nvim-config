@@ -149,8 +149,8 @@ packer.startup(function(use, use_rocks)
   -- which key
   -- use "folke/which-key.nvim"
   use {
-      "folke/which-key.nvim",
-      tag = "v2.1.0"
+    "folke/which-key.nvim",
+    tag = "v2.1.0"
   }
 
   -- Colorscheme
@@ -163,7 +163,7 @@ packer.startup(function(use, use_rocks)
     vim.g.cursorword_highlight = false
     vim.cmd [[hi CursorWord guibg=#444444]]
   end}
-  use { 'lukas-reineke/indent-blankline.nvim', branch = 'v2.20.8' }
+  use 'lukas-reineke/indent-blankline.nvim'
   use 'Xuyuanp/scrollbar.nvim'
 
   -- Completion
@@ -200,8 +200,7 @@ packer.startup(function(use, use_rocks)
   use 'JoosepAlviste/nvim-ts-context-commentstring'
 
   -- Git
-  -- use "lewis6991/gitsigns.nvim"
-  use {"lewis6991/gitsigns.nvim", tag = "v0.6"}
+  use "lewis6991/gitsigns.nvim"
 
   -- Explorer
   use 'kyazdani42/nvim-web-devicons'
