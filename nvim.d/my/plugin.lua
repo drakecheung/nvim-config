@@ -59,8 +59,8 @@ packer.startup(function(use, use_rocks)
   --   python hererocks.py --verbose -j 2.1.1713484068 -r latest ~/.cache/nvim/packer_hererocks/2.1.1713484068
   -- FileNotFoundError: [Errno 2] No such file or directory: 'src/lua.h'
   --sai liblua5.1-0-dev
-  -- use_rocks 'lua-cjson'
-  -- use_rocks 'f-strings'
+  use_rocks 'lua-cjson'
+  use_rocks 'f-strings'
 
   use "wbthomason/packer.nvim"          -- Have packer manage itself
   use "nvim-lua/popup.nvim"             -- An implementation of the Popup API from vim in Neovim

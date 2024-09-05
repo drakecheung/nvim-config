@@ -4,6 +4,7 @@
   "description": "nvim-uid",
   "license": "MIT",
   "dependencies": {
+    "node": "^22.8.0",
     "puppeteer": "^13.6.0",
     "svg-term-cli": "^2.1.1"
   }
