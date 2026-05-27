@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 
-# tmux kill-session -t nvim-config_void
+# List all tmux sessions and their windows.
+# Useful for debugging void sessions after toggle-pane.
 
-tmux list-sessions -F "#{session_name}" | while read session; do
+tmux list-sessions -F "#{session_name}" 2>/dev/null | while read session; do
   echo "$session"
-  tmux list-windows -t "$session" -F "  #{window_index}: #{window_name}"
+  tmux list-windows -t "$session" -F "  #{window_index}: #{window_name}" 2>/dev/null
 done

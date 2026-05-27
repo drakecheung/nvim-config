@@ -50,17 +50,18 @@ packer.init {
 
 -- Install your plugins here
 packer.startup(function(use, use_rocks)
-  -- if not auto-installed, install with command
-  -- :PackerRocks install lua-cjson
-  -- :PackerRocks install f-strings
-  -- if found error in missing loader module, untar lua-5.1.tar in this repo to replace:
-  --   ~/.cache/nvim/packer_hererocks/2.1.0-beta3/share/lua/5.1
-  -- get error message by manually run
-  --   python hererocks.py --verbose -j 2.1.1713484068 -r latest ~/.cache/nvim/packer_hererocks/2.1.1713484068
-  -- FileNotFoundError: [Errno 2] No such file or directory: 'src/lua.h'
-  --sai liblua5.1-0-dev
-  -- use_rocks 'lua-cjson'
-  -- use_rocks 'f-strings'
+  -- NOTE: If auto-installation of rocks fails with "main function has more than 65536 constants":
+  -- This is a bug in LuaRocks 2.4.4 (Packer's default) handling large repositories.
+  -- FIX: Install manually from local source:
+  --   1. cd /tmp
+  --   2. Clone repos:
+  --      git clone https://github.com/openresty/lua-cjson
+  --      git clone https://github.com/hishamhm/f-strings
+  --   3. Install using packer's internal luarocks:
+  --      cd lua-cjson && ~/.cache/nvim/packer_hererocks/2.1.0-beta3/bin/luarocks make
+  --      cd ../f-strings && ~/.cache/nvim/packer_hererocks/2.1.0-beta3/bin/luarocks make
+  use_rocks 'lua-cjson'
+  use_rocks 'f-strings'
 
   use "wbthomason/packer.nvim"          -- Have packer manage itself
   use "nvim-lua/popup.nvim"             -- An implementation of the Popup API from vim in Neovim
@@ -74,7 +75,25 @@ packer.startup(function(use, use_rocks)
   use "tomtom/tlib_vim"                 -- provided string#Strip, used in the lokinote bullet style switching shortcut
   use "rcarriga/nvim-notify"
 
-  -- ai code completion
+  -- Gemini AI plugin
+  -- use {
+  --   'kiddos/gemini.nvim',
+  --   config = function()
+  --     require("gemini").setup({
+  --       completion = {
+  --         enabled = false,
+  --       },
+  --       hints = {
+  --         enabled = false,
+  --       },
+  --       instruction = {
+  --         enabled = false,
+  --       },
+  --     })
+  --   end,
+  -- }
+
+  -- ai code completion (inline ghost text)
   -- use {
   --   'Exafunction/codeium.vim',
   --   config = function()
@@ -156,7 +175,7 @@ packer.startup(function(use, use_rocks)
   use 'Mofiqul/vscode.nvim'
   use 'kvrohit/substrata.nvim'
   use 'marko-cerovac/material.nvim'
-  use 'norcalli/nvim-colorizer.lua'
+  use 'catgoose/nvim-colorizer.lua'
 
   use {'yamatsum/nvim-cursorline', config = function()
     vim.g.cursorword_highlight = false
@@ -168,7 +187,6 @@ packer.startup(function(use, use_rocks)
   -- Completion
   use "L3MON4D3/LuaSnip"
   use "hrsh7th/nvim-cmp"
-  -- use {"hrsh7th/nvim-cmp", commit = "dbc72290295cfc63075dab9ea635260d2b72f2e5"}
   use "hrsh7th/cmp-buffer"
   use "hrsh7th/cmp-path"
   use "hrsh7th/cmp-cmdline"
@@ -178,14 +196,17 @@ packer.startup(function(use, use_rocks)
   use "saadparwaiz1/cmp_luasnip"
 
   -- LSP
-  use {
-    "williamboman/mason.nvim",
-    "williamboman/mason-lspconfig.nvim",
-    "neovim/nvim-lspconfig",
-  }
-  -- use "williamboman/nvim-lsp-installer"
+  use "williamboman/mason.nvim"
+  use "williamboman/mason-lspconfig.nvim"
+  use "neovim/nvim-lspconfig"
   use "b0o/schemastore.nvim"
-   use "nvimtools/none-ls.nvim"
+  use "nvimtools/none-ls.nvim"
+  -- use({
+  --   "stevearc/conform.nvim",
+  --   config = function()
+  --     require("conform").setup()
+  --   end,
+  -- })
 
   -- Telescope
   -- download and install ripgrep deb from https://github.com/BurntSushi/ripgrep/releases
@@ -207,13 +228,13 @@ packer.startup(function(use, use_rocks)
   use "lewis6991/gitsigns.nvim"
 
   -- Explorer
-  use 'kyazdani42/nvim-web-devicons'
-  use 'kyazdani42/nvim-tree.lua'
+  use 'nvim-tree/nvim-web-devicons'
+  use 'nvim-tree/nvim-tree.lua'
 
   -- Tabline / Statusline
   -- use "ojroques/nvim-hardline"
   -- use "romgrk/barbar.nvim"
-  use {'akinsho/bufferline.nvim', tag = "*", requires = 'kyazdani42/nvim-web-devicons'}
+  use {'akinsho/bufferline.nvim', tag = "*", requires = 'nvim-tree/nvim-web-devicons'}
 
   -- Marks
   use "kshenoy/vim-signature"    -- m* to toggle, display in sign bar
@@ -223,8 +244,8 @@ packer.startup(function(use, use_rocks)
   vim.cmd [[let g:VM_maps['Skip Region'] = '<C-x>']]
   vim.cmd [[let g:VM_maps['Exit'] = '<C-c>']]
   -- use "mg979/vim-visual-multi"
-   use "bronson/vim-trailing-whitespace"    -- try if this can be replaced by lsp auto format
-   use "tpope/vim-surround"   -- manage surrounding characters like (abc) -> [abc] : cs([
+  use "bronson/vim-trailing-whitespace"    -- try if this can be replaced by lsp auto format
+  use "tpope/vim-surround"   -- manage surrounding characters like (abc) -> [abc] : cs([
   -- crs: snake_case
   -- crm: MixedCase
   -- crc: camelCase

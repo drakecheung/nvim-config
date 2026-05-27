@@ -1,42 +1,46 @@
 #!/usr/bin/env bash
+#
+# toggle-pane — Ctrl+o toggles opencode: spawn ↔ stash ↔ restore
+#
+# Principle: check if opencode pane exists in current window,
+# NOT which pane has focus. This makes Ctrl+o a true toggle
+# regardless of where your cursor is.
 
-curr_session=$(tmux display-message -p "#W")
+curr_window=$(tmux display-message -p "#W")
+void_session="${curr_window}_void"
 
-void_session="${curr_session}_void"
+# ── Detect opencode in current window ──────────────────────────────
+opencode_pane=$(tmux list-panes -F '#D #{pane_current_command}' 2>/dev/null \
+  | grep ' opencode$' \
+  | head -n1 \
+  | awk '{print $1}')
 
-need_create_void="0"
+# ── State machine ──────────────────────────────────────────────────
 
-if ! tmux has-session -t "${void_session}" 2>/dev/null; then
-  need_create_void="1"
-  index="0"
+if tmux has-session -t "${void_session}" 2>/dev/null; then
+  # === RESTORE: void has stashed opencode → bring it back ===
+  #
+  # Don't assume window index — tmux 3.5a doesn't renumber after
+  # kill-window. Dynamically look up the stashed window.
+  void_win=$(tmux list-windows -t "${void_session}" -F '#I' | head -n1)
+  tmux join-pane -d -h -s "${void_session}:${void_win}"
+
+elif [[ -n "$opencode_pane" ]]; then
+  # === STASH: opencode is visible → hide it into void ===
+  #
+  # 1. Create void (comes with 1 zombie window at :0)
+  # 2. Break the opencode pane into void (becomes :1)
+  # 3. Kill zombie → opencode renumbers to :0
+  # After this, void has exactly 1 clean window.
+  tmux new-session -d -s "$void_session"
+  tmux break-pane -s "$opencode_pane" -d -t "${void_session}"
+  tmux kill-window -t "${void_session}:0"
+
 else
-  index=`tmux list-windows -t "${void_session}" | awk "{print NR-1}" | tail -n1`
+  # === SPAWN: no opencode anywhere → create one ===
+  #
+  # Do NOT create void here — void is only created on first STASH.
+  # This keeps void clean: created → used → auto-dies on RESTORE.
+  path=$(tmux display-message -p '#{pane_current_path}')
+  tmux split-window -h -c "$path" "opencode -c"
 fi
-
-pane_idx=`tmux display-message -p '#P'`
-process_name=`tmux display-message -p -t ${pane_idx} '#{pane_current_command}'`
-
-# tmux display-message "$void_session, $index, $pane_idx, $process_name"
-
-if [[ "$index" = "0" ]]; then
-  # no opencode inside void, so user is attempting to hide a opencode
-  if [[ "$process_name" != "opencode" ]]; then
-    # not a opencode pane, so create a new one
-    path=`tmux display-message -p "#{pane_current_path}"`
-    # tmux display-message "$path"
-    tmux split-window -c "$path" "opencode -c"
-
-    if [[ "$need_create_void" = "1" ]]; then
-      tmux new-session -d -s "$void_session"
-    fi
-
-    # old behavior, just raise error
-    # tmux display-message "Only opencode pane can be hide into void."
-  else
-    # move pane to void
-    tmux break-pane -d -t "${void_session}"
-  fi
-else
-  tmux join-pane -s "${void_session}:${index}"
-fi
-

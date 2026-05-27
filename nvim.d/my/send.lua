@@ -27,6 +27,11 @@ end
 
 M.send_line_to_next_pane = function(line)
   local pane = M.run_shell("tmux list-panes | grep active -A1 | sed -n 2p"):gsub(": .*", "")
+  if pane == "" then
+    -- No next pane (active is last), fall back to prev
+    M.send_line_to_prev_pane(line)
+    return
+  end
   M.send_line_to_pane(line, pane)
 end
 
@@ -150,7 +155,6 @@ vim.keymap.set("v", "dp", function()
   M.send_current_file_path_to_next_pane()
 end, { desc = "send path:line to opencode" })
 
--- use c-o in tmux.conf
 -- vim.keymap.set("n", "do", function()
 --   exec_in_split("opencode -c")
 -- end, { desc = "open opencode in current project folder" })

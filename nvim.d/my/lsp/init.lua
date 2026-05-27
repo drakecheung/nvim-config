@@ -1,9 +1,6 @@
 local ok1, _ = pcall(require, "lspconfig")
 if not ok1 then return end
 
--- local ok2, lsp_installer = pcall(require, "nvim-lsp-installer")
--- if not ok2 then return end
-
 local ok2, mason = pcall(require, "mason")
 if not ok2 then return end
 
@@ -16,98 +13,71 @@ if not ok4 then return end
 local ok5, masonlsp = pcall(require, "mason-lspconfig")
 if not ok5 then return end
 
---[[ tail -f  ~/.local/state/nvim/lsp.log ]]
-
+-- =============================================================================
+--  MASON: install LSP binaries (not configure them — that's vim.lsp.config's job)
+-- =============================================================================
 mason.setup()
 masonlsp.setup {
-  ensure_installed = { "eslint", "bashls", "pyright" },
-    handlers = {
-      function(server_name)
-        require("lspconfig")[server_name].setup {}
-      end,
-      ["tsserver"] = function() end,
-      ["ts_ls"] = function() end,
-      ["ruff_lsp"] = function()
-      require("lspconfig").ruff_lsp.setup {
-        on_attach = function(client, bufnr)
-          if client.supports_method("textDocument/formatting") then
-            vim.api.nvim_clear_autocmds({ group = augroup, buffer = bufnr })
-          end
-        end,
-      }
-    end,
-  },
+  ensure_installed = { "eslint", "bashls", "pyright", "ruff" },
+  -- NOTE: we do NOT use the `handlers` pattern here.
+  -- Server configuration is done via vim.lsp.config() + vim.lsp.enable() below.
+  -- Mason only manages binary installation.
 }
 
--- Remove manual setup calls
--- require("lspconfig").eslint.setup {}
--- require("lspconfig").bashls.setup {}
--- require("lspconfig").ruff_lsp.setup { ... }
+-- =============================================================================
+--  LSP CONFIGURATION (Neovim 0.11+ native API)
+-- =============================================================================
+-- Why vim.lsp.config instead of lspconfig.setup?
+--   - Declarative: config and enable are separate concerns
+--   - No need for mason-lspconfig handlers to bridge the gap
+--   - LspAttach autocmd replaces per-server on_attach callbacks
 
--- local on_attach = function(client, bufnr)
---   local opts = { noremap = true, silent = true }
---   local map = vim.api.nvim_buf_set_keymap
---   map(bufnr, "n", "<c-h>", '<cmd>lua vim.diagnostic.goto_prev({ float = false })<cr>', opts)
---   map(bufnr, "n", "<c-l>", '<cmd>lua vim.diagnostic.goto_next({ float = false })<cr>', opts)
---   map(bufnr, "n", "<c-m-]>", "<cmd>lua vim.lsp.buf.hover()<CR>", opts)
---   map(bufnr, "n", "<c-]>", "<cmd>lua vim.lsp.buf.definition()<CR>", opts)
---   map(bufnr, "n", "<leader>rn", "<cmd>lua vim.lsp.buf.rename()<CR>", opts)
--- end
+-- 1. Capabilities (required for nvim-cmp autocompletion)
+local capabilities = cmp_nvim_lsp.default_capabilities()
 
--- lsp_installer.on_server_ready(function(server)
---   local opts = {
---     on_attach = on_attach,
---     capabilities = cmp_nvim_lsp.default_capabilities(),
---   }
---
---   -- refs for all LSP servers
---   -- https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md
---   if (server.name == "grammarly") then
---     opts.filetypes = { "markdown", "rst", "html", "lokinote" }
---   end
---
---   -- if (server.name == "sqls") then
---   --   opts.settings = {
---   --     sqls = {
---   --       lowercaseKeywords = false,
---   --       connections = {
---   --         {
---   --           driver = 'postgresql',
---   --           dataSourceName = 'host=127.0.0.1 port=15432 user=farmweb password=farmweb321 dbname=farmweb',
---   --         }
---   --       }
---   --     }
---   --   }
---   -- end
---
---   if server.name == "ltex" then
---     opts.filetypes = { "lokinote", "bib", "gitcommit", "markdown", "org", "plaintex", "rst", "rnoweb", "tex" }
---   end
---
---   if server.name == "tsserver" then
---     local tsserver_opts = require("my.lsp.tsserver")
---     opts = vim.tbl_deep_extend("keep", tsserver_opts, opts)
---   end
---
---   if server.name == "jsonls" then
---     local jsonls_opts = require("my.lsp.jsonls")
---     opts = vim.tbl_deep_extend("force", jsonls_opts, opts)
---   end
---
---   if server.name == "sumneko_lua" then
---     local sumneko_opts = require("my.lsp.sumneko_lua")
---     opts = vim.tbl_deep_extend("force", sumneko_opts, opts)
---   end
---
---   if server.name == "pyright" then
---     local pyright_opts = require("my.lsp.pyright")
---     opts = vim.tbl_deep_extend("force", pyright_opts, opts)
---   end
---
---   -- This setup() function is exactly the same as lspconfig's setup function.
---   -- Refer to https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md
---   server:setup(opts)
--- end)
+-- 2. Global LspAttach: runs once per buffer when ANY LSP attaches
+vim.api.nvim_create_autocmd("LspAttach", {
+  group = vim.api.nvim_create_augroup("UserLspConfig", {}),
+  callback = function(ev)
+    local client = vim.lsp.get_client_by_id(ev.data.client_id)
+    local bufnr = ev.buf
+    local opts = { buffer = bufnr, silent = true }
+
+    -- Shared keymaps (work for all LSP servers)
+    vim.keymap.set("n", "<c-h>", vim.diagnostic.goto_prev, opts)
+    vim.keymap.set("n", "<c-l>", vim.diagnostic.goto_next, opts)
+    vim.keymap.set("n", "<c-m-]>", vim.lsp.buf.hover, opts)
+    vim.keymap.set("n", "<c-]>", vim.lsp.buf.definition, opts)
+    vim.keymap.set("n", "<leader>rn", vim.lsp.buf.rename, opts)
+
+    -- Per-server adjustments (replaces per-server on_attach)
+    if client and client.name == "ruff" then
+      -- Disable ruff's built-in formatting (we use null-ls for that)
+      client.server_capabilities.documentFormattingProvider = false
+    end
+  end,
+})
+
+-- 3. Configure & Enable Standard Servers
+local servers = { "eslint", "bashls", "pyright" }
+
+for _, server in ipairs(servers) do
+  vim.lsp.config(server, {
+    capabilities = capabilities,
+  })
+  vim.lsp.enable(server)
+end
+
+-- 4. Configure & Enable Ruff
+vim.lsp.config("ruff", {
+  capabilities = capabilities,
+  -- NOTE: no on_attach here — use LspAttach autocmd above instead
+})
+vim.lsp.enable("ruff")
+
+-- =============================================================================
+--  DIAGNOSTICS & UI
+-- =============================================================================
 
 local signs = {
   { name = "DiagnosticSignError", text = "" },
@@ -133,6 +103,7 @@ vim.diagnostic.config({
   },
 })
 
+-- Toggle LSP Functions
 local lsp_is_on = true
 
 _G.turn_off_lsp = function()
@@ -159,7 +130,7 @@ _G.turn_on_lsp = function()
 end
 
 _G.toggle_lsp = function()
-  if lsp_is_on == true then
+  if lsp_is_on then
     _G.turn_off_lsp()
   else
 _G.LspListServers = function()
@@ -182,23 +153,19 @@ end
 
 _G.turn_on_lsp()
 
-vim.api.nvim_create_autocmd("LspAttach", {
-  callback = function(args)
-    local client = vim.lsp.get_client_by_id(args.data.client_id)
-    if client and (client.name == "tsserver" or client.name == "ts_ls") then
-      client.stop()
-    end
-  end,
-})
+-- UI Borders
+vim.lsp.handlers["textDocument/hover"] = function(err, result, ctx)
+  vim.lsp.handlers.hover(err, result, ctx, { border = "rounded" })
+end
 
-vim.lsp.handlers["textDocument/hover"] = vim.lsp.with(vim.lsp.handlers.hover, {
-  border = "rounded",
-})
+vim.lsp.handlers["textDocument/signatureHelp"] = function(err, result, ctx)
+  vim.lsp.handlers.signature_help(err, result, ctx, { border = "rounded" })
+end
 
-vim.lsp.handlers["textDocument/signatureHelp"] = vim.lsp.with(vim.lsp.handlers.signature_help, {
-  border = "rounded",
-})
 
+-- =============================================================================
+--  NULL-LS (Formatting & Diagnostics via external tools)
+-- =============================================================================
 -- https://github.com/jose-elias-alvarez/null-ls.nvim/tree/main/lua/null-ls/builtins/formatting
 local formatting = null_ls.builtins.formatting
 -- https://github.com/jose-elias-alvarez/null-ls.nvim/tree/main/lua/null-ls/builtins/diagnostics
@@ -213,4 +180,21 @@ null_ls.setup {
   },
 }
 
-require("flutter-tools").setup{} -- use defaults
+-- =============================================================================
+--  HIGHLIGHT ON YANK (Copy)
+-- =============================================================================
+vim.api.nvim_create_autocmd("TextYankPost", {
+  group = vim.api.nvim_create_augroup("HighlightYank", { clear = true }),
+  callback = function()
+    vim.highlight.on_yank({
+      higroup = "IncSearch",
+      timeout = 200,
+    })
+  end,
+})
+
+-- FLUTTER
+local ok_flutter, _ = pcall(require, "flutter-tools")
+if ok_flutter then
+  require("flutter-tools").setup {}
+end

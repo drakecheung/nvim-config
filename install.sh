@@ -1,17 +1,30 @@
 #!/usr/bin/env bash
 
-if nvim --version | head -n1 | grep -vq 0.11; then
-  echo "expected nvim 0.11, aborting..."
+# NOTE: node is required by package.json (puppeteer, svg-term-cli)
+# Version is not strictly checked — any recent node (18+) works.
+if ! which node > /dev/null 2>&1; then
+  echo "node not found, aborting..."
   exit 1
 fi
 
-if pip3 list | grep pynvim | grep -vq pynvim; then
+if nvim --version | head -n1 | grep -qE 'v0\.(1[1-9]|[2-9])'; then
+  :  # nvim >= 0.11 (required for vim.lsp.config API)
+else
+  echo "expected nvim >= 0.11, aborting..."
+  exit 1
+fi
+
+if pip3 list 2>/dev/null | grep -q pynvim; then
+  :  # pynvim found
+else
   echo "expected pynvim, aborting..."
   exit 1
 fi
 
-if tmux -V | grep -vq 3.5; then
-  echo "expected tmux 3.5, aborting..."
+if tmux -V | grep -qE '[3-9]\.[5-9]'; then
+  :  # tmux >= 3.5
+else
+  echo "expected tmux >= 3.5, aborting..."
   exit 1
 fi
 
