@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+#
+# toggle-logs — Ctrl+l: toggle app logs pane
+#
+# If log pane exists → kill it.
+# If not → cd to project dir, source .envrc, run docker compose logs.
+
+# ── Find project root (look for .envrc) ──────────────────────────
+path=$(tmux display-message -p '#{pane_current_path}')
+while [[ "$path" != "/" ]]; do
+  if [[ -f "$path/.envrc" ]]; then
+    project_dir="$path"
+    break
+  fi
+  path=$(dirname "$path")
+done
+
+if [[ -z "$project_dir" ]]; then
+  tmux display-message "No .envrc found (not a project directory)"
+  exit 1
+fi
+
+# ── Detect existing log pane ─────────────────────────────────────
+log_pane=$(tmux list-panes -F '#D #{pane_start_command}' 2>/dev/null \
+  | grep 'toggle-logs' \
+  | head -n1 \
+  | awk '{print $1}')
+
+if [[ -n "$log_pane" ]]; then
+  # === KILL: log pane exists → close it ===
+  tmux kill-pane -t "$log_pane"
+else
+  # === SPAWN: open log pane ===
+  tmux split-window -hb -l 40% -c "$project_dir" \
+    "bash -c 'source .envrc && echo toggle-logs > /dev/null && docker compose logs -f --no-log-prefix --tail=200 app; exec bash'"
+  # Focus stays on current pane (nvim)
+fi

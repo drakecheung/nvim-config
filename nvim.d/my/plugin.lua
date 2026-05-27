@@ -44,9 +44,9 @@ packer.init {
 --   endif
 -- endfunction
 -- can probably be replaced with lsp
--- call SourceWhenExist("/home/loki/loki/env/vim-misc/plugin/html.vim")
+-- call SourceWhenExist("/home/drake/drake/env/vim-misc/plugin/html.vim")
 -- for refactoring ruby
--- call SourceWhenExist("/home/loki/loki/env/vim-misc/plugin/extract-method.vim")
+-- call SourceWhenExist("/home/drake/drake/env/vim-misc/plugin/extract-method.vim")
 
 -- Install your plugins here
 packer.startup(function(use, use_rocks)
@@ -65,9 +65,6 @@ packer.startup(function(use, use_rocks)
 
   use "wbthomason/packer.nvim"          -- Have packer manage itself
   use "nvim-lua/popup.nvim"             -- An implementation of the Popup API from vim in Neovim
-
-  -- vim.cmd [[let g:user_emmet_leader_key = '<C-Z>']]
-  use "mattn/emmet-vim"
   use "nvim-lua/plenary.nvim"           -- Useful lua functions used ny lots of plugins
   use 'antoinemadec/FixCursorHold.nvim'
   use "tpope/vim-repeat"
@@ -232,7 +229,7 @@ packer.startup(function(use, use_rocks)
   use 'nvim-tree/nvim-tree.lua'
 
   -- Tabline / Statusline
-  -- use "ojroques/nvim-hardline"
+  use "ojroques/nvim-hardline"
   -- use "romgrk/barbar.nvim"
   use {'akinsho/bufferline.nvim', tag = "*", requires = 'nvim-tree/nvim-web-devicons'}
 

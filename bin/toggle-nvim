@@ -19,7 +19,9 @@ nvim_pane=$(tmux list-panes -F '#D #{pane_current_command}' 2>/dev/null \
 if tmux has-session -t "${void_session}" 2>/dev/null; then
   # === RESTORE: void has stashed nvim → bring it back ===
   void_win=$(tmux list-windows -t "${void_session}" -F '#I' | head -n1)
-  tmux join-pane -d -h -s "${void_session}:${void_win}"
+  tmux join-pane -d -h -b -s "${void_session}:${void_win}"
+  nvim_pane=$(tmux list-panes -F '#D #{pane_current_command}' | grep ' nvim$' | awk '{print $1}' | head -n1)
+  tmux select-pane -t "$nvim_pane"
 
 elif [[ -n "$nvim_pane" ]]; then
   # === STASH: nvim is visible → hide it into void ===

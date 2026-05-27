@@ -44,8 +44,8 @@ vim.api.nvim_create_autocmd("LspAttach", {
     local opts = { buffer = bufnr, silent = true }
 
     -- Shared keymaps (work for all LSP servers)
-    vim.keymap.set("n", "<c-h>", vim.diagnostic.goto_prev, opts)
-    vim.keymap.set("n", "<c-l>", vim.diagnostic.goto_next, opts)
+    vim.keymap.set("n", "<c-h>", function() vim.diagnostic.jump({ count = -1, float = false }) end, opts)
+    vim.keymap.set("n", "<c-l>", function() vim.diagnostic.jump({ count = 1, float = false }) end, opts)
     vim.keymap.set("n", "<c-m-]>", vim.lsp.buf.hover, opts)
     vim.keymap.set("n", "<c-]>", vim.lsp.buf.definition, opts)
     vim.keymap.set("n", "<leader>rn", vim.lsp.buf.rename, opts)
@@ -133,21 +133,7 @@ _G.toggle_lsp = function()
   if lsp_is_on then
     _G.turn_off_lsp()
   else
-_G.LspListServers = function()
-  local clients = vim.lsp.get_clients({ bufnr = 0 })
-  if #clients == 0 then
-    print("No active LSP servers for this buffer.")
-    return
-  end
-  local names = {}
-  for _, client in ipairs(clients) do
-    table.insert(names, client.name)
-  end
-  print("Active LSP servers: " .. table.concat(names, ", "))
-end
-vim.cmd [[command! LspListServers lua LspListServers()]]
-
-_G.turn_on_lsp()
+    _G.turn_on_lsp()
   end
 end
 
@@ -174,9 +160,11 @@ local diagnostics = null_ls.builtins.diagnostics
 null_ls.setup {
   debug = false,
   sources = {
-    -- formatting.eslint.with { extra_args = { "--fix" } },
-    formatting.black.with { extra_args = { "--fast" } },
+    formatting.prettier.with { extra_args = { } },
+    -- formatting.black.with { extra_args = { "--fast" } },
+    -- formatting.yapf,
     formatting.stylua,
+    -- diagnostics.flake8,
   },
 }
 

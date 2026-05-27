@@ -24,6 +24,8 @@ if tmux has-session -t "${void_session}" 2>/dev/null; then
   # kill-window. Dynamically look up the stashed window.
   void_win=$(tmux list-windows -t "${void_session}" -F '#I' | head -n1)
   tmux join-pane -d -h -s "${void_session}:${void_win}"
+  opencode_pane=$(tmux list-panes -F '#D #{pane_current_command}' | grep ' opencode' | awk '{print $1}' | head -n1)
+  tmux select-pane -t "$opencode_pane"
 
 elif [[ -n "$opencode_pane" ]]; then
   # === STASH: opencode is visible → hide it into void ===

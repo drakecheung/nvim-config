@@ -4,9 +4,9 @@ local o = vim.opt
 o.backup = false
 o.writebackup = false
 o.swapfile = false
-o.directory = "/home/loki/.config/nvim/tmp"
+o.directory = "/home/drake/.config/nvim/tmp"
 o.undofile = true
-o.undodir = "/home/loki/.config/nvim/tmp"
+o.undodir = "/home/drake/.config/nvim/tmp"
 o.confirm = true
 
 o.ruler = true

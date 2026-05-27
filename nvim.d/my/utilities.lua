@@ -75,7 +75,7 @@ _G.ReloadConfig = function()
       package.loaded[name] = nil
     end
   end
-  dofile("/home/loki/.config/nvim/init.lua")
+  dofile("/home/drake/.config/nvim/init.lua")
 end
 vim.cmd [[command! ReloadConfig lua ReloadConfig()]]
 
@@ -108,3 +108,18 @@ _G.which_key_map = function(prefix, mappings)
   })
 end
 
+
+_G.which_key_v3_map = function(mappings)
+  local wkok, wk = pcall(require, "which-key")
+  if not wkok then
+    print "which-key.nvim is required but not found"
+    return
+  end
+  wk.add(mappings, {
+    mode = "n",
+    buffer = nil,
+    silent = true,
+    remap = false,
+    nowait = true,
+  })
+end
