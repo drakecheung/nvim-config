@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+#
+# browse-repos — fzf browse git repos (no .devbase needed)
+#
+# If argument given → use as search path.
+# If no argument → prompt for path (default: ~/appcara).
+
+if [[ -n "$1" ]]; then
+  search_path="$1"
+else
+  # Prompt with default
+  read -p "Path [~/appcara]: " input
+  search_path="${input:-$HOME/appcara}"
+fi
+
+# Expand ~ if used, or prepend ~/ if relative
+if [[ "$search_path" == ~* ]] || [[ "$search_path" == \$HOME* ]]; then
+  search_path=$(eval echo "$search_path")
+elif [[ "$search_path" != /* ]]; then
+  search_path="$HOME/$search_path"
+fi
+
+if [[ ! -d "$search_path" ]]; then
+  tmux display-message "Not a directory: $search_path"
+  exit 1
+fi
+
+repos=$(find "$search_path" -maxdepth 3 -name ".git" -type d 2>/dev/null \
+  | sed -e 's|/\.git||' -e "s|$HOME/||" \
+  | sort -u)
+
+if [[ -z "$repos" ]]; then
+  tmux display-message "No git repos found under $search_path"
+  exit 1
+fi
+
+picked=$(echo "$repos" | sort -r | fzf-tmux-popup -p -w 60 -h 50% -m)
+
+if [[ -z "$picked" ]]; then
+  exit 0
+fi
+
+projName=$(echo "$picked" | sed 's|.*/||')
+
+if ! tmux list-windows -F "#W" | grep -q "^${projName}$"; then
+  cmd="cd $HOME/$picked ; zsh -ic '[ -f .envrc ] && source .envrc; TERM=screen-256color; nvim'"
+  tmux new-window -n "$projName" "$cmd"
+fi
+
+tmux select-window -t "$projName"
