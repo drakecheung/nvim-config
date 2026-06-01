@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# toggle-logs — toggle app logs pane
+# toggle-db-console — toggle db console pane (psql)
 # Positioning: left of nvim if exists, else far left of window.
 
 # ── Find project root ──────────────────────────────────────────────
@@ -8,6 +8,7 @@ path=$(tmux display-message -p '#{pane_current_path}')
 while [[ "$path" != "/" ]]; do
   if [[ -f "$path/.envrc" ]]; then
     project_dir="$path"
+    proj_name=$(basename "$project_dir")
     break
   fi
   path=$(dirname "$path")
@@ -18,23 +19,28 @@ if [[ -z "$project_dir" ]]; then
   exit 1
 fi
 
-# ── Detect existing log pane ───────────────────────────────────────
-log_pane=$(tmux list-panes -F '#D #{pane_start_command}' 2>/dev/null \
-  | grep 'toggle-logs' | head -n1 | awk '{print $1}')
+# ── Detect existing db console pane ────────────────────────────────
+db_pane=$(tmux list-panes -F '#D' -f '#{m:*leftpane*,#{pane_start_command}}' 2>/dev/null | head -n1)
+if [[ -z "$db_pane" ]]; then
+  db_pane=$(tmux list-panes -F '#D #{pane_current_command}' 2>/dev/null \
+    | grep ' psql$' | head -n1 | awk '{print $1}')
+fi
 
-if [[ -n "$log_pane" ]]; then
+if [[ -n "$db_pane" ]]; then
   # === KILL ===
-  tmux kill-pane -t "$log_pane"
+  tmux kill-pane -t "$db_pane"
 else
   # === SPAWN: position left of nvim, or far left ===
   nvim_pane=$(tmux list-panes -F '#D #{pane_current_command}' 2>/dev/null \
     | grep ' nvim$' | head -n1 | awk '{print $1}')
 
   if [[ -n "$nvim_pane" ]]; then
+    # Split left of nvim
     tmux split-window -hb -l 40% -t "$nvim_pane" -c "$project_dir" \
-      "bash -c 'source .envrc && echo toggle-logs > /dev/null && docker compose logs -f --no-log-prefix --tail=200 app; exec bash'"
+      "bash -c 'source .envrc && echo leftpane > /dev/null && docker compose exec db psql -U ${proj_name} -d ${proj_name} -P expanded=auto -P pager=off; exec bash'"
   else
+    # Far left of window
     tmux split-window -hb -l 40% -c "$project_dir" \
-      "bash -c 'source .envrc && echo toggle-logs > /dev/null && docker compose logs -f --no-log-prefix --tail=200 app; exec bash'"
+      "bash -c 'source .envrc && echo leftpane > /dev/null && docker compose exec db psql -U ${proj_name} -d ${proj_name} -P expanded=auto -P pager=off; exec bash'"
   fi
 fi
