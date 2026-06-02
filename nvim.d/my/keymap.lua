@@ -36,6 +36,7 @@ map("n", "<leader><m-l>", ":BufferLineMoveNext<cr>", opts)
 map("n", "<m-b>", "<cmd>Telescope buffers theme=dropdown<cr>", opts)
 map("n", "qf", "<cmd>bwipeout<cr>", opts)
 map("n", "<leader>cl", ":let @+ = expand('%:p')<cr>", opts)     -- copy current file path to clipboard
+map("n", "<leader>e", ":checktime<cr>", { desc = "Reload buffers from disk" })
 map("n", "ss", send.send_current_line, opts)
 map("n", "s0", function()
   vim.g.cursor_position = vim.fn.winsaveview()
