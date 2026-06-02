@@ -18,9 +18,11 @@ if [[ -z "$project_dir" ]]; then
   exit 1
 fi
 
-# ── Detect existing log pane ───────────────────────────────────────
+# ── Detect existing log pane (rl via console_ctl OR toggle-logs) ──
+# Uses 'leftpane' marker (set by console_ctl) and docker compose logs
 log_pane=$(tmux list-panes -F '#D #{pane_start_command}' 2>/dev/null \
-  | grep 'toggle-logs' | head -n1 | awk '{print $1}')
+  | grep -E 'leftpane.*docker compose logs|toggle-logs' \
+  | head -n1 | awk '{print $1}')
 
 if [[ -n "$log_pane" ]]; then
   # === KILL ===
