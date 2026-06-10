@@ -2,17 +2,23 @@
 #
 # toggle-nvim — Ctrl+n: open nvim in left split, stash to void, restore
 #
-# Same stash/restore pattern as toggle-pane (for opencode).
-# Nvim is never killed — just moved between current window and a void session.
+# Same stash/restore pattern as toggle-opencode.
 
 curr_window=$(tmux display-message -p "#W")
 void_session="${curr_window}_nvim_void"
 
 # ── Detect nvim in current window ──────────────────────────────────
 nvim_pane=$(tmux list-panes -F '#D #{pane_current_command}' 2>/dev/null \
-  | grep ' nvim$' \
+  | grep -E ' nvim$| nvim ' \
   | head -n1 \
   | awk '{print $1}')
+# Fallback: check pane_title for nvim (set by open-project)
+if [[ -z "$nvim_pane" ]]; then
+  nvim_pane=$(tmux list-panes -F '#D #{pane_title}' 2>/dev/null \
+    | grep -i 'nvim' \
+    | head -n1 \
+    | awk '{print $1}')
+fi
 
 # ── State machine ──────────────────────────────────────────────────
 
@@ -22,6 +28,7 @@ if tmux has-session -t "${void_session}" 2>/dev/null; then
   tmux join-pane -d -h -b -s "${void_session}:${void_win}"
   nvim_pane=$(tmux list-panes -F '#D #{pane_current_command}' | grep ' nvim$' | awk '{print $1}' | head -n1)
   tmux select-pane -t "$nvim_pane"
+  tmux resize-pane -x 40%
 
 elif [[ -n "$nvim_pane" ]]; then
   # === STASH: nvim is visible → hide it into void ===
@@ -32,5 +39,5 @@ elif [[ -n "$nvim_pane" ]]; then
 else
   # === SPAWN: no nvim anywhere → create one ===
   path=$(tmux display-message -p '#{pane_current_path}')
-  tmux split-window -hb -l 60% -c "$path" "nvim"
+  tmux split-window -hb -l 40% -c "$path" "nvim"
 fi

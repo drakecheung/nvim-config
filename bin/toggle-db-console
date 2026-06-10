@@ -39,11 +39,12 @@ else
 
   if [[ -n "$nvim_pane" ]]; then
     # Split left of nvim
-    tmux split-window -hb -l 40% -t "$nvim_pane" -c "$project_dir" \
+    tmux split-window -hb -l 40% -c "$project_dir" \
       "bash -c 'source .envrc && echo leftpane > /dev/null && docker compose exec db psql -U ${proj_name} -d ${proj_name} -P expanded=auto -P pager=off; exec bash'"
   else
     # Far left of window
     tmux split-window -hb -l 40% -c "$project_dir" \
       "bash -c 'source .envrc && echo leftpane > /dev/null && docker compose exec db psql -U ${proj_name} -d ${proj_name} -P expanded=auto -P pager=off; exec bash'"
   fi
+
 fi

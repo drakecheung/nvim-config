@@ -3,7 +3,6 @@ if not status_ok then
   return
 end
 
-local lib = require("nvim-tree.lib")
 local view = require("nvim-tree.view")
 local open_file = require('nvim-tree.actions.node.open-file')
 
@@ -21,7 +20,7 @@ local function on_attach(bufnr)
   vim.keymap.set('n', '<c-t>', api.tree.close, opts('Close'))
   vim.keymap.set('n', 'x', api.node.navigate.parent_close, opts('Close Directory'))
   local open = function()
-    local node = lib.get_node_at_cursor()
+    local node = api.tree.get_node_under_cursor()
     if node.nodes ~= nil then
       lib.expand_or_collapse(node)
     else

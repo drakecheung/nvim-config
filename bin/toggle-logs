@@ -33,10 +33,11 @@ else
     | grep ' nvim$' | head -n1 | awk '{print $1}')
 
   if [[ -n "$nvim_pane" ]]; then
-    tmux split-window -hb -l 40% -t "$nvim_pane" -c "$project_dir" \
+    tmux split-window -hb -l 40% -c "$project_dir" \
       "bash -c 'source .envrc && echo toggle-logs > /dev/null && docker compose logs -f --no-log-prefix --tail=200 app; exec bash'"
   else
     tmux split-window -hb -l 40% -c "$project_dir" \
       "bash -c 'source .envrc && echo toggle-logs > /dev/null && docker compose logs -f --no-log-prefix --tail=200 app; exec bash'"
   fi
+
 fi
