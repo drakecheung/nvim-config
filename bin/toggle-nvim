@@ -39,5 +39,5 @@ elif [[ -n "$nvim_pane" ]]; then
 else
   # === SPAWN: no nvim anywhere → create one ===
   path=$(tmux display-message -p '#{pane_current_path}')
-  tmux split-window -hb -l 40% -c "$path" "nvim"
+  tmux split-window -hb -l 40% -c "$path" "bash -c 'source .envrc 2>/dev/null; nvim'"
 fi

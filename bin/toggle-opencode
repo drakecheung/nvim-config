@@ -45,5 +45,7 @@ else
   # Do NOT create void here — void is only created on first STASH.
   # This keeps void clean: created → used → auto-dies on RESTORE.
   path=$(tmux display-message -p '#{pane_current_path}')
-  tmux split-window -h -l 60% -c "$path" "opencode -c"
+  # Try -c (continue) first; if no session exists for this project, fall back to fresh start.
+  tmux split-window -h -l 60% -c "$path" \
+    "opencode -c 2>/dev/null || opencode"
 fi
