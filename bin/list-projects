@@ -1,19 +1,75 @@
 #!/usr/bin/env bash
-# set -x
+# list-projects — scan $HOME for git repos, annotate with project marker status
+#
+# Output format:  type|relative_path
+#   project  = has project.vim.lua or .devbase/project.vim.lua
+#   clean    = plain git clone, no marker
+#
+# Cache: ~/.open-project.cache
 
-if [[ ! -f ~/.open-project.cache ]]; then
-  tmux display-message "Scanning for projects ..."
-  projs=$(
-    fdfind -H "^project.vim" $HOME |\
-      sed -e 's|/\.devbase.*||' -e 's|/project.vim.lua||' -e 's|/project.vim||' -e "s|$HOME/||" |\
-      uniq
-  )
-  touch ~/.open-project.cache
+cache="$HOME/.open-project.cache"
 
-  for base in $projs; do
-    if [[ -d $HOME/$base/.git ]]; then
-      echo "$base" >> ~/.open-project.cache
-    fi
-  done
+# Rebuild only if cache missing (refresh-projects deletes cache to force rebuild)
+if [[ -f "$cache" ]]; then
+  cat "$cache"
+  exit 0
 fi
-cat ~/.open-project.cache
+
+if [[ -n "$TMUX" ]]; then
+  tmux display-message "Scanning for repos ..."
+fi
+
+> "$cache"
+
+if command -v fdfind &>/dev/null; then
+  scanner() {
+    fdfind -H --no-ignore --max-depth 5 '^\.git$' "$HOME" --type d \
+      --exclude node_modules \
+      --exclude .cache \
+      --exclude .local/share \
+      --exclude .npm \
+      --exclude 'packer-plugins-backup*' \
+      --exclude .nvm \
+      --exclude .oh-my-zsh \
+      --exclude '.tmux/plugins' \
+      --exclude '.claude/plugins' \
+      2>/dev/null
+  }
+else
+  scanner() {
+    find "$HOME" -maxdepth 5 -name ".git" -type d \
+      -not -path "*/node_modules/*" \
+      -not -path "*/.cache/*" \
+      -not -path "*/.local/share/*" \
+      -not -path "*/.npm/*" \
+      -not -path "*/packer-plugins-backup*/*" \
+      -not -path "*/.nvm/*" \
+      -not -path "*/.oh-my-zsh/*" \
+      -not -path "*/.tmux/plugins/*" \
+      -not -path "*/.claude/plugins/*" \
+      2>/dev/null
+  }
+fi
+
+scanner | while IFS= read -r gitdir; do
+  # Strip trailing /.git, /.git/, or //.git/ (handles fdfind trailing slash variations)
+  repo="${gitdir}"
+  repo="${repo%/.git}"
+  repo="${repo%/.git/}"
+  rel="${repo#$HOME/}"
+
+  if [[ -f "$repo/project.vim.lua" ]] || [[ -f "$repo/.devbase/project.vim.lua" ]]; then
+    echo "project|$rel"
+  else
+    echo "clean|$rel"
+  fi
+done | sort -u > "$cache"
+
+count=$(wc -l < "$cache")
+if [[ -n "$TMUX" ]]; then
+  tmux display-message "Found $count repos"
+else
+  echo "Found $count repos"
+fi
+
+cat "$cache"

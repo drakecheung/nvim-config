@@ -2,8 +2,8 @@
 
 # Rebuild the tmux project list cache.
 # Run this after adding a new project.vim.lua to a git repo.
-# Bound to: Ctrl+Alt+R in tmux.conf
+# Bound to: Ctrl+Alt+S in tmux.conf
 
 rm -f ~/.open-project.cache
 list-projects > /dev/null
-tmux display-message "Project cache rebuilt ($(wc -l < ~/.open-project.cache) projects)"
+tmux display-message "Project cache rebuilt ($(wc -l < ~/.open-project.cache) repos)"

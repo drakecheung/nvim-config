@@ -1,43 +1,36 @@
 #!/usr/bin/env bash
 #
-# toggle-logs — toggle app logs pane
-# Positioning: left of nvim if exists, else far left of window.
+# toggle-logs — toggle app logs (left pane, auto-swap via void)
+
+source "$HOME/drake/nvim-config/bin/left-toggle.sh"
 
 # ── Find project root ──────────────────────────────────────────────
-path=$(tmux display-message -p '#{pane_current_path}')
-while [[ "$path" != "/" ]]; do
-  if [[ -f "$path/.envrc" ]]; then
-    project_dir="$path"
-    break
-  fi
-  path=$(dirname "$path")
-done
+project_dir=""
+find_project() {
+  local dir="$1"
+  while [[ "$dir" != "/" ]]; do
+    if [[ -f "$dir/.envrc" ]]; then
+      project_dir="$dir"
+      return 0
+    fi
+    dir=$(dirname "$dir")
+  done
+  return 1
+}
+
+find_project "$(tmux display-message -p '#{pane_current_path}')"
+if [[ -z "$project_dir" ]]; then
+  while IFS= read -r pane_path; do
+    find_project "$pane_path" && break
+  done < <(tmux list-panes -F '#{pane_current_path}' 2>/dev/null)
+fi
 
 if [[ -z "$project_dir" ]]; then
-  tmux display-message "No .envrc found (not a project directory)"
+  tmux display-message "No project found (.envrc missing)"
   exit 1
 fi
 
-# ── Detect existing log pane (rl via console_ctl OR toggle-logs) ──
-# Uses 'leftpane' marker (set by console_ctl) and docker compose logs
-log_pane=$(tmux list-panes -F '#D #{pane_start_command}' 2>/dev/null \
-  | grep -E 'leftpane.*docker compose logs|toggle-logs' \
-  | head -n1 | awk '{print $1}')
-
-if [[ -n "$log_pane" ]]; then
-  # === KILL ===
-  tmux kill-pane -t "$log_pane"
-else
-  # === SPAWN: position left of nvim, or far left ===
-  nvim_pane=$(tmux list-panes -F '#D #{pane_current_command}' 2>/dev/null \
-    | grep ' nvim$' | head -n1 | awk '{print $1}')
-
-  if [[ -n "$nvim_pane" ]]; then
-    tmux split-window -hb -l 40% -c "$project_dir" \
-      "bash -c 'source .envrc && echo toggle-logs > /dev/null && docker compose logs -f --no-log-prefix --tail=200 app; exec bash'"
-  else
-    tmux split-window -hb -l 40% -c "$project_dir" \
-      "bash -c 'source .envrc && echo toggle-logs > /dev/null && docker compose logs -f --no-log-prefix --tail=200 app; exec bash'"
-  fi
-
-fi
+left_toggle "logs" \
+  "bash -c 'source .envrc && docker-logs-follow . app'" \
+  "35%" \
+  "$project_dir"

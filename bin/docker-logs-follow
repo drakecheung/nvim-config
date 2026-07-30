@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# docker-logs-follow — auto-reconnect docker compose log stream after restarts
+#
+# Usage:
+#   docker-logs-follow [compose-dir] [service...]
+#
+# Example:
+#   docker-logs-follow ~/appcara/hrm/build app web
+#   docker-logs-follow . app          # current dir, single service
+
+set -uo pipefail
+
+dir="${1:-.}"
+shift
+services="${@:-app}"
+
+project_dir="$(cd "$dir" && pwd)"
+project_name="$(basename "$project_dir")"
+
+while true; do
+  printf '\n%s\n' "━━━ $project_name | $services | $(date '+%H:%M:%S') ━━━"
+  docker compose \
+    --project-directory "$project_dir" \
+    logs -f --tail=100 $services 2>&1 || true
+  printf '\n%s\n' "─── Stream ended — reconnecting in 3s (Ctrl+C to stop) ───"
+  sleep 3
+done

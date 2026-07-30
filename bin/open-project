@@ -1,37 +1,48 @@
 #!/usr/bin/env bash
-# set -x
-
-# search project.vim and .devbase/project.vim from $HOME
-# ask with fzf, open or focus the picked project
-
-# Prerequisite
-# tmux 3.2+
-# fdfind & fzf
-#     sudo apt-get install fdfind fzf
-
-# move up/down:  m-k / m-j
-# accept:        c-j
+# open-project — fzf picker for ALL git repos under $HOME, open in tmux window
+#
+# No argument  → interactive fzf with icon annotations
+# With argument → direct match by project name (for quick-launch bindings)
+#
+# Icons:
+#   🏠  = has project.vim.lua (registered)
+#   📦  = plain git clone (clean)
 
 input="$1"
+cache="$HOME/.open-project.cache"
 
-projs=`list-projects`
+if [[ ! -f "$cache" ]]; then
+  list-projects > /dev/null
+fi
 
 if [[ "$input" = "" ]]; then
-  picked="$(echo "$projs" | sort -r | fzf-tmux-popup -p -w 50 -h 50% -m)"
+  # ── Interactive picker ──────────────────────────────────────────
+  display=$(
+    awk -F'|' '$1=="project" {printf "🏠  %s\n", $2}' "$cache" | sort -r
+    awk -F'|' '$1=="clean"   {printf "📦  %s\n", $2}' "$cache" | sort -r
+  )
 
-  if [[ "$picked" = "" ]]; then
+  picked=$(echo "$display" | fzf-tmux-popup -p -w 60 -h 50% -m)
+
+  if [[ -z "$picked" ]]; then
     exit 0
   fi
+
+  # Strip icon prefix ("🏠  " or "📦  ") to get relative path
+  proj=$(echo "$picked" | sed 's/^[^ ]*  //')
 else
-  picked="$(echo "$projs" | grep "$input")"
+  # ── Direct match (e.g. "nvim-config", "farmweb") ────────────────
+  proj=$(grep -F "|$input" "$cache" | cut -d'|' -f2 | head -1)
+  if [[ -z "$proj" ]]; then
+    proj="$input"
+  fi
 fi
 
-projName="$(echo "$picked" | cut -d'/' -f2)"
+projName="$(echo "$proj" | sed 's|.*/||')"
 
 if ! tmux list-windows -F "#W" | grep -q "^${projName}$"; then
-  cmd="cd $HOME/$picked ; zsh -ic '[ -f .envrc ] && source .envrc; TERM=screen-256color; rm -f /tmp/nvim/$projName; nvim'"
-  tmux new-window -n $projName "$cmd"
+  cmd="cd $HOME/$proj ; zsh -ic '[ -f .envrc ] && source .envrc; TERM=screen-256color; rm -f /tmp/nvim/$projName; nvim'"
+  tmux new-window -n "$projName" "$cmd"
 fi
 
-# tmux switch-client
-tmux select-window -t $projName
+tmux select-window -t "$projName"

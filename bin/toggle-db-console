@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 #
-# toggle-db-console — toggle db console pane (psql)
-# Positioning: left of nvim if exists, else far left of window.
+# toggle-db-console — toggle db console (left pane, auto-swap via void)
+
+source "$HOME/drake/nvim-config/bin/left-toggle.sh"
 
 # ── Find project root ──────────────────────────────────────────────
 path=$(tmux display-message -p '#{pane_current_path}')
@@ -19,32 +20,7 @@ if [[ -z "$project_dir" ]]; then
   exit 1
 fi
 
-# ── Detect existing db console pane (rd via console_ctl OR toggle-db-console) ──
-db_pane=$(tmux list-panes -F '#D #{pane_start_command}' 2>/dev/null \
-  | grep -E 'leftpane.*docker compose exec db psql' \
-  | head -n1 | awk '{print $1}')
-# Fallback: find pane running psql
-if [[ -z "$db_pane" ]]; then
-  db_pane=$(tmux list-panes -F '#D #{pane_current_command}' 2>/dev/null \
-    | grep ' psql$' | head -n1 | awk '{print $1}')
-fi
-
-if [[ -n "$db_pane" ]]; then
-  # === KILL ===
-  tmux kill-pane -t "$db_pane"
-else
-  # === SPAWN: position left of nvim, or far left ===
-  nvim_pane=$(tmux list-panes -F '#D #{pane_current_command}' 2>/dev/null \
-    | grep ' nvim$' | head -n1 | awk '{print $1}')
-
-  if [[ -n "$nvim_pane" ]]; then
-    # Split left of nvim
-    tmux split-window -hb -l 40% -c "$project_dir" \
-      "bash -c 'source .envrc && echo leftpane > /dev/null && docker compose exec db psql -U ${proj_name} -d ${proj_name} -P expanded=auto -P pager=off; exec bash'"
-  else
-    # Far left of window
-    tmux split-window -hb -l 40% -c "$project_dir" \
-      "bash -c 'source .envrc && echo leftpane > /dev/null && docker compose exec db psql -U ${proj_name} -d ${proj_name} -P expanded=auto -P pager=off; exec bash'"
-  fi
-
-fi
+left_toggle "db" \
+  "bash -c 'source .envrc && docker compose exec db psql -U ${proj_name} -d ${proj_name} -P expanded=auto -P pager=off'" \
+  "35%" \
+  "$project_dir"
