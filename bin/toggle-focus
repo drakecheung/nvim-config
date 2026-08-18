@@ -43,8 +43,12 @@ elif [[ $pane_count -eq 1 ]]; then
   tmux set-option -wu @focus_left  2>/dev/null
   tmux set-option -wu @focus_right 2>/dev/null
 
-  left=$(tmux split-window -hbd -l 15% -PF '#D' "sleep infinity")
-  right=$(tmux split-window -hd  -l 15% -PF '#D' "sleep infinity")
+  # Pin spacer panes to the current (middle) pane's cwd — otherwise a later
+  # split of a spacer inherits a stale directory (e.g. another repo), and
+  # direnv allow / devbase commands target the wrong project.
+  mid=$(tmux display-message -p '#{pane_current_path}')
+  left=$(tmux split-window -hbd -l 15% -c "$mid" -PF '#D' "sleep infinity")
+  right=$(tmux split-window -hd  -l 15% -c "$mid" -PF '#D' "sleep infinity")
   tmux set-option -w @focus_left  "$left"
   tmux set-option -w @focus_right "$right"
 
