@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# toggle-logs — toggle app logs (left pane, auto-swap via void)
+# toggle-applogs — toggle app logs (left pane, auto-swap via void)
 
 source "$HOME/drake/nvim-config/bin/left-toggle.sh"
 
@@ -30,7 +30,7 @@ if [[ -z "$project_dir" ]]; then
   exit 1
 fi
 
-left_toggle "logs" \
+left_toggle "applogs" \
   "bash -c 'source .envrc && docker-logs-follow . app'" \
   "35%" \
   "$project_dir"

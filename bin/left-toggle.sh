@@ -30,7 +30,7 @@ left_toggle() {
         | awk '{
           id=$1; $1=$2=""; sub(/^ +/,""); cmd=$0
           if      (cmd~/left-nvim/) print id,"nvim"
-          else if (cmd~/left-logs/) print id,"logs"
+          else if (cmd~/left-applogs/) print id,"applogs"
           else if (cmd~/left-db/)   print id,"db"
           else if (cmd~/ nvim|nvim /) print id,"nvim"
           else                      print id,""
