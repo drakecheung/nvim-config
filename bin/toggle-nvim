@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
 #
-# toggle-nvim — Ctrl+n: toggle nvim in left pane (auto-swap via void)
+# toggle-nvim — Ctrl+n: toggle nvim in left pane (kill + replace, no void)
 
-source "$HOME/drake/nvim-config/bin/left-toggle.sh"
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$DIR/tmux-panes.sh"
 
-path=$(tmux display-message -p '#{pane_current_path}')
+target="${1:-}"
+path=$(tmux display-message ${target:+-t "$target"} -p '#{pane_current_path}')
 
-left_toggle "nvim" \
+pane_lib::toggle_pane "nvim" \
   "bash -c 'source .envrc 2>/dev/null; nvim'" \
   "35%" \
-  "$path"
+  "$path" \
+  "$target"

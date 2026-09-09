@@ -6,12 +6,24 @@
 #   1. Focus mode active  (@focus_left/@focus_right spacers exist) → EXIT
 #   2. Single pane                                                → ENTER focus mode
 #   3. Multiple panes (2+)                                        → REPOSITION left→25%
+#
+# Unified void: uses ${win}_void_focus (was *_focus_void).
 
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$DIR/tmux-panes.sh"
+
+target="${1:-}"
+t_flag=""
+[[ -n "$target" ]] && t_flag="-t $target"
+
+cur_win=$(tmux display-message $t_flag -p '#{window_id}')
 pane_alive() { tmux display-message -p -t "$1" '#D' &>/dev/null; }
 
-focus_left=$(tmux show-option -wqv @focus_left 2>/dev/null)
-focus_right=$(tmux show-option -wqv @focus_right 2>/dev/null)
-pane_count=$(tmux list-panes -F '#D' | wc -l)
+VOID=$(pane_lib::void_name "focus" "$cur_win")
+
+focus_left=$(tmux show-option $t_flag -wqv @focus_left 2>/dev/null)
+focus_right=$(tmux show-option $t_flag -wqv @focus_right 2>/dev/null)
+pane_count=$(tmux list-panes $t_flag -F '#D' | wc -l)
 
 # ── State 1: Exit focus mode ─────────────────────────────────────
 if [[ -n "$focus_left" && -n "$focus_right" ]] \
@@ -20,45 +32,37 @@ if [[ -n "$focus_left" && -n "$focus_right" ]] \
 
   [[ -n "$focus_left" ]]  && tmux kill-pane -t "$focus_left"  2>/dev/null
   [[ -n "$focus_right" ]] && tmux kill-pane -t "$focus_right" 2>/dev/null
-  tmux set-option -wu @focus_left  2>/dev/null
-  tmux set-option -wu @focus_right 2>/dev/null
+  tmux set-option $t_flag -wu @focus_left  2>/dev/null
+  tmux set-option $t_flag -wu @focus_right 2>/dev/null
 
-  win=$(tmux display-message -p '#W')
-  void_session="${win}_focus_void"
-  if tmux has-session -t "$void_session" 2>/dev/null; then
-    while tmux list-windows -t "$void_session" -F '#I' 2>/dev/null | grep -q .; do
-      void_win=$(tmux list-windows -t "$void_session" -F '#I' | head -n1)
-      tmux join-pane -d -h -s "${void_session}:${void_win}" 2>/dev/null || break
+  if tmux has-session -t "$VOID" 2>/dev/null; then
+    while tmux list-windows -t "$VOID" -F '#I' 2>/dev/null | grep -q .; do
+      void_win=$(tmux list-windows -t "$VOID" -F '#I' | head -n1)
+      tmux join-pane -d -h -s "${VOID}:${void_win}" $t_flag 2>/dev/null || break
     done
-    tmux kill-session -t "$void_session" 2>/dev/null
+    tmux kill-session -t "$VOID" 2>/dev/null
   fi
 
 # ── State 2: Enter focus mode (single pane) ──────────────────────
 elif [[ $pane_count -eq 1 ]]; then
 
-  win=$(tmux display-message -p '#W')
-  void_session="${win}_focus_void"
-  # Clean stale state
-  tmux kill-session -t "$void_session" 2>/dev/null
-  tmux set-option -wu @focus_left  2>/dev/null
-  tmux set-option -wu @focus_right 2>/dev/null
+  tmux kill-session -t "$VOID" 2>/dev/null
+  tmux set-option $t_flag -wu @focus_left  2>/dev/null
+  tmux set-option $t_flag -wu @focus_right 2>/dev/null
 
-  # Pin spacer panes to the current (middle) pane's cwd — otherwise a later
-  # split of a spacer inherits a stale directory (e.g. another repo), and
-  # direnv allow / devbase commands target the wrong project.
-  mid=$(tmux display-message -p '#{pane_current_path}')
-  left=$(tmux split-window -hbd -l 15% -c "$mid" -PF '#D' "sleep infinity")
-  right=$(tmux split-window -hd  -l 15% -c "$mid" -PF '#D' "sleep infinity")
-  tmux set-option -w @focus_left  "$left"
-  tmux set-option -w @focus_right "$right"
+  mid=$(tmux display-message $t_flag -p '#{pane_current_path}')
+  left=$(tmux split-window $t_flag -hbd -l 15% -c "$mid" -PF '#D' "sleep infinity")
+  right=$(tmux split-window $t_flag -hd  -l 15% -c "$mid" -PF '#D' "sleep infinity")
+  tmux set-option $t_flag -w @focus_left  "$left"
+  tmux set-option $t_flag -w @focus_right "$right"
 
 # ── State 3: Reposition (2+ panes) → left pane 25% ───────────────
 else
 
-  leftmost=$(tmux list-panes -F '#{pane_id} #{pane_left}' \
+  leftmost=$(tmux list-panes $t_flag -F '#{pane_id} #{pane_left}' \
     | sort -nk2 | head -n1 | awk '{print $1}')
 
-  focused=$(tmux display-message -p '#D')
+  focused=$(tmux display-message $t_flag -p '#D')
   tmux select-pane -t "$leftmost"
   tmux resize-pane -x 35%
   tmux select-pane -t "$focused"

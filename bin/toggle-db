@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 #
-# toggle-db-console — toggle db console (left pane, auto-swap via void)
+# toggle-db — Ctrl+/: toggle db console (left pane, auto-swap via void)
 
-source "$HOME/drake/nvim-config/bin/left-toggle.sh"
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$DIR/tmux-panes.sh"
 
+target="${1:-}"
 # ── Find project root ──────────────────────────────────────────────
-path=$(tmux display-message -p '#{pane_current_path}')
+path=$(tmux display-message ${target:+-t "$target"} -p '#{pane_current_path}')
 while [[ "$path" != "/" ]]; do
   if [[ -f "$path/.envrc" ]]; then
     project_dir="$path"
@@ -20,7 +22,8 @@ if [[ -z "$project_dir" ]]; then
   exit 1
 fi
 
-left_toggle "db" \
+pane_lib::toggle_pane "db" \
   "bash -c 'source .envrc && docker compose exec db psql -U ${proj_name} -d ${proj_name} -P expanded=auto -P pager=off'" \
   "35%" \
-  "$project_dir"
+  "$project_dir" \
+  "$target"

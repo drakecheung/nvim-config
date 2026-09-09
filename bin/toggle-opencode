@@ -1,46 +1,20 @@
 #!/usr/bin/env bash
 #
-# toggle-opencode — Ctrl+o toggles opencode: spawn ↔ stash ↔ restore
+# toggle-opencode — Ctrl+o: single deterministic toggle via pane_lib.
 #
-# State machine (checked in priority order):
-#   1. pane visible  (@opencode_pane set + alive)  → STASH into void
-#   2. void has pane  (session exists)              → RESTORE from void
-#   3. neither                                       → SPAWN
+# No send-keys, no custom state machine, no context branching.
+# opencode is the ONLY type that spawns on the RIGHT (60% width).
+#   visible         → stashed into ${win}_void_opencode
+#   stashed in void → restored
+#   neither         → spawned on the right
+#
+# To run opencode in-place from a plain shell, just type `opencode` — it
+# already occupies the current pane without any split.
 
-curr_window=$(tmux display-message -p "#W")
-void_session="${curr_window}_opencode_void"
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$DIR/tmux-panes.sh"
 
-# ── Check tracked pane ─────────────────────────────────────────────
-tracked=$(tmux show-option -wqv @opencode_pane 2>/dev/null)
-if [[ -n "$tracked" ]] && ! tmux display-message -p -t "$tracked" '#D' &>/dev/null; then
-  tmux set-option -wu @opencode_pane
-  tracked=""
-fi
+target="${1:-}"
+path=$(tmux display-message ${target:+-t "$target"} -p '#{pane_current_path}')
 
-# ── State machine ──────────────────────────────────────────────────
-
-if [[ -n "$tracked" ]]; then
-  # === STASH: opencode is visible → hide into void ===
-  tmux kill-session -t "$void_session" 2>/dev/null
-  tmux new-session -d -s "$void_session"
-  tmux break-pane -s "$tracked" -d -t "${void_session}"
-  tmux kill-window -t "${void_session}:0" 2>/dev/null
-  tmux set-option -wu @opencode_pane
-
-elif tmux has-session -t "${void_session}" 2>/dev/null; then
-  # === RESTORE: void has stashed opencode → bring it back ===
-  void_win=$(tmux list-windows -t "${void_session}" -F '#I' | head -n1)
-  if [[ -n "$void_win" ]]; then
-    new_pane=$(tmux join-pane -d -h -s "${void_session}:${void_win}" -PF '#D')
-    [[ -n "$new_pane" ]] && tmux set-option -w @opencode_pane "$new_pane"
-  fi
-  tmux kill-session -t "$void_session" 2>/dev/null
-
-else
-  # === SPAWN: no opencode anywhere → create one ===
-  tmux kill-session -t "$void_session" 2>/dev/null
-  path=$(tmux display-message -p '#{pane_current_path}')
-  pane_id=$(tmux split-window -h -l 60% -c "$path" -PF '#D' \
-    "opencode -c 2>/dev/null || opencode")
-  tmux set-option -w @opencode_pane "$pane_id"
-fi
+pane_lib::toggle_pane "opencode" "opencode -c 2>/dev/null || opencode" "60%" "$path" "$target"

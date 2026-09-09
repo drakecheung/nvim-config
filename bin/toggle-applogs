@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 #
-# toggle-applogs — toggle app logs (left pane, auto-swap via void)
+# toggle-applogs — Ctrl+a: toggle app logs (left pane, auto-swap via void)
 
-source "$HOME/drake/nvim-config/bin/left-toggle.sh"
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$DIR/tmux-panes.sh"
 
+target="${1:-}"
 # ── Find project root ──────────────────────────────────────────────
 project_dir=""
 find_project() {
@@ -18,11 +20,13 @@ find_project() {
   return 1
 }
 
-find_project "$(tmux display-message -p '#{pane_current_path}')"
+find_project "$(tmux display-message ${target:+-t "$target"} -p '#{pane_current_path}')"
 if [[ -z "$project_dir" ]]; then
+  t_flag=""
+  [[ -n "$target" ]] && t_flag="-t $target"
   while IFS= read -r pane_path; do
     find_project "$pane_path" && break
-  done < <(tmux list-panes -F '#{pane_current_path}' 2>/dev/null)
+  done < <(tmux list-panes $t_flag -F '#{pane_current_path}' 2>/dev/null)
 fi
 
 if [[ -z "$project_dir" ]]; then
@@ -30,7 +34,8 @@ if [[ -z "$project_dir" ]]; then
   exit 1
 fi
 
-left_toggle "applogs" \
+pane_lib::toggle_pane "applogs" \
   "bash -c 'source .envrc && docker-logs-follow . app'" \
   "35%" \
-  "$project_dir"
+  "$project_dir" \
+  "$target"
