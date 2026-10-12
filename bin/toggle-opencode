@@ -17,4 +17,11 @@ source "$DIR/tmux-panes.sh"
 target="${1:-}"
 path=$(tmux display-message ${target:+-t "$target"} -p '#{pane_current_path}')
 
-pane_lib::toggle_pane "opencode" "opencode -c 2>/dev/null || opencode" "60%" "$path" "$target"
+# A toggle pane is spawned via non-interactive `zsh -c`, which never sources
+# ~/.zshrc — so the .env key block there is never applied and opencode starts
+# without API keys. Load .env here, at spawn time, so the keys live only in the
+# opencode process env while the key values stay solely in opencode-config/.env.
+ENV_FILE="$HOME/.config/opencode/.env"
+pane_lib::toggle_pane "opencode" \
+  "set -a; [ -f \"$ENV_FILE\" ] && . \"$ENV_FILE\"; set +a; opencode -c 2>/dev/null || opencode" \
+  "60%" "$path" "$target"
