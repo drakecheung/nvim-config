@@ -51,7 +51,7 @@ rm -rf \
   ~/.config/nvim/snippets \
   ~/.tmux.conf \
   ~/.config/kitty/kitty.conf \
-  ~/.config/wezterm/wezterm.lua \
+  ~/.config/ghostty/config.ghostty \
   ~/.config/nvim/ftdetect \
   ~/.config/nvim/ftplugin \
   ~/.config/nvim/syntax
@@ -64,7 +64,7 @@ ln -s `pwd`/syntax ~/.config/nvim/syntax
 ln -s `pwd`/snippets ~/.config/nvim/snippets
 ln -s `pwd`/tmux.conf ~/.tmux.conf
 [ -d ~/.config/kitty ] && ln -s `pwd`/kitty.conf ~/.config/kitty/kitty.conf
-[ -d ~/.config/wezterm ] && ln -s `pwd`/wezterm.lua ~/.config/wezterm/wezterm.lua
+[ -d ~/.config/ghostty ] && ln -s `pwd`/ghostty.conf ~/.config/ghostty/config.ghostty
 
 echo "Symlinks done"
 

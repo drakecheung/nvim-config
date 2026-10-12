@@ -5,30 +5,52 @@ Todo
 How to use this repo
   fork it
   in nvim.d/my/keymap.lua, comment out lines started with "cancel"
-  prepare the environment according to the following 2 sessions
+  prepare the environment according to the following 2 sections
   run ./install.sh
   read every files, modify and experiment
 
-General key bindings (applied to both vim and tmux)
-  Ctrl-j / k     = indent / outdent highlighted lines (vim visual mode only)
-  Ctrl-j         = accept / confirm / open (similar to <cr>)
-  Alt-j / k      = move in finder (nvim-cmp, telescope, and fzf)
-  Alt-H / L      = move in tmux windows
-  Alt-K / J      = move in tmux panes
-  Alt-j / k      = move in vim buffers (indentation wise)
-  Ctrl-h / l     = LSP prev issue / next issue
-  gj / gk        = git next hunk / prev hunk
-  Ctrl-c         = cancel / exit in zsh, vim, and tmux
+Key bindings
+
+  tmux (prefix = Ctrl-b)
+    Ctrl-o         = toggle opencode   (right pane, 60%)
+    Ctrl-n         = toggle nvim       (left pane, 35%)
+    Ctrl-/ Ctrl-_  = toggle db
+    Ctrl-a         = toggle applogs
+    Ctrl-g         = toggle focus
+    Ctrl-s         = open-project      (browse repos)
+    Ctrl-M-v / -f  = jump to nvim-config / farmweb
+    Ctrl-M-s       = refresh project list
+    Alt-H / L      = move between windows
+    Alt-J / K      = move between panes
+    Ctrl-b R       = reload tmux config
+
+  vim
+    Ctrl-j / k     = outdent / indent lines (normal + visual mode)
+    Ctrl-j         = accept / confirm / open (similar to <cr>)
+    Alt-j / k      = move in finder (nvim-cmp, telescope, fzf) and vim buffers
+    Alt-H / L      = move in tmux windows
+    Alt-K / J      = move in tmux panes
+    Ctrl-h / l     = LSP prev issue / next issue
+    gj / gk        = git next hunk / prev hunk
+
+  shell
+    Ctrl-c         = cancel the current input line
+
+  Agent status dot (tmux status bar, before the window name)
+    green dot  = that window's opencode finished its turn
+    orange dot = that window's opencode is waiting for you (permission / feedback)
+    the dot clears as soon as you select that window
+    (set by the opencode tmux-bell plugin in the opencode-config repo)
 
 Environment
   solve 'too many opened files'
     check
       ulimit -n
     fix (ubuntu 24.04)
-      svi /etc/sysctl.conf
+      sudo vim /etc/sysctl.conf
         fs.inotify.max_user_watches=524288
         fs.inotify.max_user_instances=524288
-      svi /etc/security/limits.conf
+      sudo vim /etc/security/limits.conf
         * soft nofile 100001
         * hard nofile 100002
         root soft nofile 100001
@@ -36,11 +58,11 @@ Environment
       reboot
 
   libssl.so is missing (ubuntu 22.04)
-    wget http://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2.17_amd64.deb
-    sudo dpkg -i libssl1.1_1.1.1f-1ubuntu2.17_amd64.deb
-    rm *.deb
+    libssl1.1 was dropped from the repos. Take any libssl1.1_1.1.1f-1ubuntu2.*_amd64.deb from
+      http://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/
+    sudo dpkg -i libssl1.1_*.deb && rm *.deb
 
-  nodejs 18, eslint
+  nodejs 20, eslint
     sudo apt remove nodejs libnode-dev libnode72
     curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
     sudo apt install -y nodejs
@@ -77,23 +99,22 @@ Environment
     sudo apt install libevent-dev libncurses-dev
     ./configure && make && sudo make install
 
-  wezterm with ligatures support
-    download and install from the deb file
-      https://wezfurlong.org/wezterm/install/linux.html
-      wget https://github.com/wez/wezterm/releases/download/20220905-102802-7d4b8249/wezterm-20220905-102802-7d4b8249.Ubuntu20.04.deb
-      sudo dpkg -i wezterm-20220905-102802-7d4b8249.Ubuntu20.04.deb
-      rm wezterm-20220905-102802-7d4b8249.Ubuntu20.04.deb
+  ghostty (terminal; GPU-accelerated via OpenGL on Linux, Metal on macOS)
+    install (ubuntu 24.04)
+      sudo add-apt-repository ppa:mkasberg/ghostty-ubuntu
+      sudo apt update && sudo apt install ghostty
+    ligatures supported; the font is configured in ghostty's own config
 
-  terminal font with ligatures support
-    https://github.com/belluzj/fantasque-sans/releases/latest
-    download FantasqueSansMono-LargeLineHeight-NoLoopK.tar.gz
-    untar and move all files inside OTF/ into ~/.local/share/fonts
-    fc-cache -fv
-
-  other fonts with icons
-    https://www.nerdfonts.com/font-downloads
-    download and unzip the one you like e.g. MPlus Nerd Font
-    may check out a good paid font: https://www.myfonts.com/fonts/tabular-type-foundry/codelia/
+  fonts
+    what the shipped configs expect
+      ghostty.conf (active terminal)  = VictorMono Nerd Font Mono
+      kitty.conf (unused)             = Fantasque Sans Mono Regular
+    nerd fonts with icons (UI glyphs): https://www.nerdfonts.com/font-downloads
+      download, unzip, move the ttf/otf into ~/.local/share/fonts
+    fantasque (only kitty.conf needs it): https://github.com/belluzj/fantasque-sans/releases/latest
+      download FantasqueSansMono-LargeLineHeight-NoLoopK.tar.gz, untar, move OTF/* into ~/.local/share/fonts
+    paid option worth a look: https://www.myfonts.com/fonts/tabular-type-foundry/codelia/
+    after any font install: fc-cache -fv
 
 Optional for various LSP servers
   disable gnome animation
@@ -103,8 +124,7 @@ Optional for various LSP servers
     curl --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
   lsd (rust based ls)
-    https://github.com/Peltoche/lsd/releases/download/0.21.0/lsd_0.21.0_amd64.deb
-    https://github.com/Peltoche/lsd/releases
+    https://github.com/Peltoche/lsd/releases      # grab the .deb for your arch
 
   ruby
     sudo apt-get install ruby
@@ -113,18 +133,17 @@ Optional for various LSP servers
     sudo apt install -y libx11-dev x11proto-xext-dev libxext-dev
     pip3 install ueberzug
 
-  puppeteer to preview pug
-    npm install (in this folder)
+  node packages (puppeteer → pug preview, svg-term-cli → recordings)
+    npm install     # once, in this folder
 
-  dependency for previewing font files (ttf, otf)
-    sudo apt-get install sxiv
+  dependency for previewing font files (ttf, otf) — bin/fontpreview needs: xdotool sxiv convert fzf
+    sudo apt-get install sxiv imagemagick xdotool
 
   pug linting
     sudo npm install -g pug-lint
 
   terminal recording
     sudo apt-get install asciinema
-    npm install (in this folder)
     usage
       asciinema rec --overwrite test.json
       asciinema play test.json
