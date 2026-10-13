@@ -13,6 +13,7 @@ Key bindings
 
   tmux (prefix = Ctrl-b)
     Ctrl-o         = toggle opencode   (right pane, 60%)
+    Ctrl-Shift-L   = opencode: new session + reload context   (opencode pane only)
     Ctrl-n         = toggle nvim       (left pane, 35%)
     Ctrl-/ Ctrl-_  = toggle db
     Ctrl-a         = toggle applogs
