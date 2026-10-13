@@ -109,7 +109,7 @@ Environment
   fonts
     what the shipped configs expect
       ghostty.conf (active terminal)  = VictorMono Nerd Font Mono
-      kitty.conf (unused)             = Fantasque Sans Mono Regular
+      kitty.conf (kept; kitty not installed yet) = Fantasque Sans Mono Regular
     nerd fonts with icons (UI glyphs): https://www.nerdfonts.com/font-downloads
       download, unzip, move the ttf/otf into ~/.local/share/fonts
     fantasque (only kitty.conf needs it): https://github.com/belluzj/fantasque-sans/releases/latest
