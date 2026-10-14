@@ -22,6 +22,11 @@ if [[ "$input" = "" ]]; then
     awk -F'|' '$1=="clean"   {printf "📦  %s\n", $2}' "$cache" | sort -r
   )
 
+  # fzf 選項走 FZF_DEFAULT_OPTS，不用 CLI args。原因：fzf-tmux-popup 用
+  #   opts=$(printf "%q " "$@") + 未加引號展開 重建參數，含 `#`（hex 色）或空白的參數會殘留反斜線，
+  #   fzf 判定非法色值後立刻退出 → popup 一閃即關。走 env 時腳本是以
+  #   `export FZF_DEFAULT_OPTS=<quoted>` 寫進 argsf 再被 bash 重新解析，反斜線會正確還原。
+  export FZF_DEFAULT_OPTS="--border=rounded --border-label=Projects --info=inline-right --prompt='❯  ' --pointer=${FZF_PTR:-🢖} --marker=✓ --color=fg:252,bg:#114b52,hl:114,fg+:255,bg+:${FZF_SELBG:-#1f1a1a},hl+:114,info:244,prompt:114,pointer:114,marker:114,spinner:114,header:244,border:#2b7d88,label:250"
   picked=$(echo "$display" | fzf-tmux-popup -p -w 60 -h 50% -m)
 
   if [[ -z "$picked" ]]; then

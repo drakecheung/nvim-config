@@ -187,7 +187,9 @@ trap 'cleanup 1' SIGUSR1
 trap 'cleanup' EXIT
 
 envs="export TERM=$TERM "
-[[ "$opt" =~ "-K -E" ]] && FZF_DEFAULT_OPTS="--margin 0,1 $FZF_DEFAULT_OPTS"
+# 原本在 popup 模式注入 `--margin 0,1`（fzf 的 --margin 語法是 TB,LR = 上下 0、左右各 1 欄），
+# 會讓 fzf 內容左右各退 1 欄、露出一條 popup 底色，看起來與 popup 邊框「對不上」。已移除。
+# [[ "$opt" =~ "-K -E" ]] && FZF_DEFAULT_OPTS="--margin 0,1 $FZF_DEFAULT_OPTS"
 [[ -n "$FZF_DEFAULT_OPTS"    ]] && envs="$envs FZF_DEFAULT_OPTS=$(printf %q "$FZF_DEFAULT_OPTS")"
 [[ -n "$FZF_DEFAULT_COMMAND" ]] && envs="$envs FZF_DEFAULT_COMMAND=$(printf %q "$FZF_DEFAULT_COMMAND")"
 echo "$envs;" > "$argsf"
@@ -204,10 +206,10 @@ mkfifo -m o+w $fifo2
 if [[ "$opt" =~ "-K -E" ]]; then
   cat $fifo2 &
   if [[ -n "$term" ]] || [[ -t 0 ]]; then
-    cat <<< "\"$fzf\" $opts > $fifo2; out=\$? $close; exit \$out" >> $argsf
+    cat <<< "eval \"$fzf $opts\" > $fifo2; out=\$? $close; exit \$out" >> $argsf
   else
     mkfifo $fifo1
-    cat <<< "\"$fzf\" $opts < $fifo1 > $fifo2; out=\$? $close; exit \$out" >> $argsf
+    cat <<< "eval \"$fzf $opts\" < $fifo1 > $fifo2; out=\$? $close; exit \$out" >> $argsf
     cat <&0 > $fifo1 &
   fi
 
@@ -225,10 +227,10 @@ fi
 
 mkfifo -m o+w $fifo3
 if [[ -n "$term" ]] || [[ -t 0 ]]; then
-  cat <<< "\"$fzf\" $opts > $fifo2; echo \$? > $fifo3 $close" >> $argsf
+  cat <<< "eval \"$fzf $opts\" > $fifo2; echo \$? > $fifo3 $close" >> $argsf
 else
   mkfifo $fifo1
-  cat <<< "\"$fzf\" $opts < $fifo1 > $fifo2; echo \$? > $fifo3 $close" >> $argsf
+  cat <<< "eval \"$fzf $opts\" < $fifo1 > $fifo2; echo \$? > $fifo3 $close" >> $argsf
   cat <&0 > $fifo1 &
 fi
 tmux set-window-option synchronize-panes off \;\
