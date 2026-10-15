@@ -158,6 +158,42 @@ opencode     收到 0x0C → 命中內建 session_new    → 開普通新 sessio
 
 > `extended-keys-format` 預設**實測為 `xterm`**（`^[[27;6;108~`），不是 opencode 認得的 csi-u —— 用 `always` 還得額外改 format。
 
+### 4.2 鍵位分工：為什麼是這幾顆鍵（三層歸屬）
+
+分工原則：**一個動作只由一層持有** —— terminal（Ghostty）／multiplexer（tmux）／app（opencode）。
+跨層轉譯（terminal 編碼 → tmux 直通 → app 解讀）只在必要時做，且**只在最外層做一次**。
+
+| 動作 | 鍵 | 由哪一層持有（檔案） |
+|---|---|---|
+| Ghostty 自己的 tab 切換 | `ctrl+shift+←/→` | Ghostty（`ghostty.conf` 的 `next_tab`／`previous_tab`，**明確寫出**不靠預設） |
+| opencode session tab 切換 | `ctrl+tab`／`ctrl+shift+tab` | Ghostty 編碼 → tmux 直通 → opencode 預設 `Alt+Down/Up`（`ghostty.conf` 的 `csi:1;3B`／`csi:1;3A`） |
+| opencode agent 循環 | `tab`／`shift+tab` | opencode（`cli.json` 的 `agent.cycle`；還原 V1 手感） |
+| 開新 session | `ctrl+l` | opencode（`cli.json` 的 `session.new`） |
+| 離開 opencode | `ctrl+q` | opencode（`cli.json` 的 `app.exit`；原含 `ctrl+c`／`ctrl+w`／`<leader>q`） |
+| opencode 重置（開新 session ＋ 重載） | `ctrl+shift+l` | 見 §4.1 |
+| opencode 服務重啟 | `ctrl+space` ＋ `ctrl+\``（兩個鍵名都綁） | opencode（`cli.json` 的 `service.restart`） |
+
+**三個關鍵取捨（否決的替代方案）**：
+
+1. **為何把 `ctrl+tab` 給 opencode session tab、`ctrl+shift+←/→` 給 Ghostty**（2026-10-12 交換）：
+   原案相反（`ctrl+tab` 給 Ghostty）。改成現案的理由＝ Tab 系列更符合「切 tab」的直覺，且
+   `ctrl+tab`／`ctrl+shift+tab` 與 `ctrl+shift+←/→` **同屬 Ghostty 能明確區分的類型**；
+   底層路徑（Ghostty `csi:` → tmux 直通 → `Alt+Down/Up` → opencode session tab）
+   在原案已實測可通 ⇒ 交換只重新指派觸發鍵，無新增風險。
+2. **為何選方向鍵而非字母鍵**：`Ctrl+Shift+字母` 可能與 `Ctrl+字母` **同編碼**
+   （例：`ctrl+shift+l` 長期無法確認可用），而 Ghostty 天生能區分「修飾鍵 ＋ 方向鍵」。
+3. **為何 `service.restart` 要綁兩個名字**：tmux 會把收到的擴展鍵**降級（re-encode）**後才寫入 pane，
+   pane 內程式看到的是 `ctrl+space` 而非反引號；裸終端（不經 tmux）才會送真正的反引號 ⇒ **兩個名字都綁可覆蓋兩種情境**。
+   位元組層細節與隔離測試法請參閱指標 → `mem:global/tmux/ctrl-tab-and-extended-keys`。
+
+**為何 Ghostty 設定檔納入本 repo**（2026-10-12）：
+①該檔 3.7 KB、當日被改動多次，卻**完全不在任何 git repo**（真檔），備份只在 `/tmp`；
+②本 repo 已是「終端 ＋ 編輯器設定」的家（`tmux.conf`、`kitty.conf` 皆 symlink）；
+③檔名不是慣例的 `config` —— `strace` 實測 Ghostty 開啟的**就是** `config.ghostty`，
+  故 symlink 必須沿用該檔名。
+
+**驗證**：`ghostty +list-keybinds`（確認覆寫生效、symlink 被跟隨）。
+
 ## 5. 腳本與 UI
 
 ### 5.1 多層 script 除錯：每層獨立輸出
