@@ -227,13 +227,3 @@ python3 ~/.cache/nvim/packer_hererocks/hererocks.py \
 ```
 
 **先問 rocks 是否真的需要**：`lua-cjson` 自 nvim 0.6 起已被 `vim.json` 取代；`f-strings` 只是裝飾性、沒有 plugin 依賴它。檢查 `nvim.d/my/plugin.lua` 的 `use_rocks` —— 沒人需要就刪掉那些行，整條 hererocks 依賴鏈一起消失。
-
----
-
-## 附：跨專案候選（之後可提升到 opencode-config 的 `memories/global/`）
-
-以下三條已在別處被引用，內容也超過本 repo：
-
-- §3.1／§3.2 的 **tmux 3.8 行為變更**（theme 選項、display-panes 改 mode）—— 任何用 tmux 3.8 的專案都會遇到
-- §4.1 的**按鍵降級機制** —— 已有 global 條目，本節是它的具體落地實例
-- §5.1 的**多層 script 除錯法** —— 與 nvim/tmux 無關的一般方法論

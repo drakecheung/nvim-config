@@ -14,7 +14,7 @@
 
 | 住處 | 放什麼 |
 |---|---|
-| `SKELETON.md` | 方法論契約（原則／檔案地圖／同步儀式）；invariant，跨案同版 |
+| `SKELETON.md` | 方法論契約（原則／檔案地圖／同步儀式）；跨案**骨架**同版，本地增補以 `❗本 repo 增補` 標記 |
 | `AGENTS.md`（本檔）| agent 工作規則、協定、驗證方式（**引用 `SKELETON.md`**）|
 | `LESSONS.md` | 專案級坑與其行動（「遇到 X 就做 Y」）；**只由本檔引用** |
 | `opencode-config` 的 `memories/global/` | 跨專案通則 |
