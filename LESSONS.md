@@ -96,6 +96,27 @@ vim.api.nvim_create_autocmd("FileType", {           -- ③ 高亮 ＋ indent 自
 
 **javascript 例外**：不套 treesitter indent（原設定即如此：`indents.scm` 對 embedded SQL 失效），保留 Vim 的 `GetJavascriptIndent()`。
 
+### 2.4 packer 的兩個非互動陷阱
+
+**① `:PackerClean`／`:PackerSync` 的移除步驟會走 `vim.fn.confirm`** —— 非互動（headless、腳本）下拿不到回答就**直接跳過**：指令回報成功、輸出乾淨，但 plugin 目錄還在，`packer_compiled.lua` 也還引用它。
+
+```bash
+ls ~/.local/share/nvim/site/pack/packer/start/<plugin>          # 目錄還在？
+grep -c '<plugin>' ~/.config/nvim/plugin/packer_compiled.lua    # 還被引用？
+```
+
+修法（依序）：
+
+```bash
+rm -rf ~/.local/share/nvim/site/pack/packer/start/<plugin>
+nvim --headless -c 'PackerCompile' -c 'sleep 3' -c 'qa!'
+grep -c '<plugin>' ~/.config/nvim/plugin/packer_compiled.lua    # 應為 0
+```
+
+**② `:PackerCompile` 是非同步寫檔** —— `nvim --headless +PackerCompile +qa` 會在寫入前就退出，`packer_compiled.lua` 的 mtime 不變，看起來像「沒生效」。一律用上面的 `-c 'PackerCompile' -c 'sleep 3'` 形式，並以 **mtime ＋ `grep -c`** 驗證，不要看指令有沒有報錯。
+
+> `packer_compiled.lua` 住 `~/.config/nvim/plugin/`（**不在本 repo**，`~/.config/nvim` 只有 `init.lua`／`lua` 等是指向 repo 的 symlink）。
+
 ## 3. tmux 3.8
 
 ### 3.1 `theme` 選項造成「偏白」
