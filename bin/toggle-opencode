@@ -22,6 +22,15 @@ path=$(tmux display-message ${target:+-t "$target"} -p '#{pane_current_path}')
 # without API keys. Load .env here, at spawn time, so the keys live only in the
 # opencode process env while the key values stay solely in opencode-config/.env.
 ENV_FILE="$HOME/.config/opencode/.env"
+
+# The repo's .envrc is a second, separate env layer: it carries the devbase
+# stack identity (COMPOSE_PROJECT_NAME / COMPOSE_FILE), which decides which
+# stack `docker compose` / `reboot-dev` hits. Non-interactive panes get no
+# direnv hook, so the pane must load it itself. direnv first (it honours the
+# allow list and expands `use`/`dotenv`/`layout`), plain source as fallback for
+# .envrc files direnv has not allowed. cwd is the repo (pane_lib::spawn -c).
 pane_lib::toggle_pane "opencode" \
-  "set -a; [ -f \"$ENV_FILE\" ] && . \"$ENV_FILE\"; set +a; opencode -c 2>/dev/null || opencode" \
+  "set -a; [ -f \"$ENV_FILE\" ] && . \"$ENV_FILE\"; set +a; \
+   [ -f .envrc ] && { _e=\$(direnv export bash 2>/dev/null); [ -n \"\$_e\" ] && eval \"\$_e\" || . ./.envrc 2>/dev/null; }; \
+   opencode -c 2>/dev/null || opencode" \
   "60%" "$path" "$target"

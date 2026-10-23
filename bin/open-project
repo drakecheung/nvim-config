@@ -37,7 +37,13 @@ if [[ "$input" = "" ]]; then
   proj=$(echo "$picked" | sed 's/^[^ ]*  //')
 else
   # ── Direct match (e.g. "nvim-config", "farmweb") ────────────────
+  # Accept both the full relative path ("drake/nvim-config") and the bare
+  # basename ("nvim-config"): the quick-launch bindings pass the basename, while
+  # the cache stores paths relative to $HOME.
   proj=$(grep -F "|$input" "$cache" | cut -d'|' -f2 | head -1)
+  if [[ -z "$proj" ]]; then
+    proj=$(awk -F'|' -v n="$input" '{ k = split($2, p, "/"); if (p[k] == n) { print $2; exit } }' "$cache")
+  fi
   if [[ -z "$proj" ]]; then
     proj="$input"
   fi
@@ -46,8 +52,14 @@ fi
 projName="$(echo "$proj" | sed 's|.*/||')"
 
 if ! tmux list-windows -F "#W" | grep -q "^${projName}$"; then
-  cmd="cd $HOME/$proj ; zsh -ic '[ -f .envrc ] && source .envrc; TERM=screen-256color; rm -f /tmp/nvim/$projName; nvim'"
-  tmux new-window -n "$projName" "$cmd"
+  # Open at the repo path only: no editor, no env logic. A bare shell is the
+  # `main` pane in tmux-panes.sh, so Ctrl-n (nvim) and Ctrl-o (opencode) take
+  # over from here — fullscreen respawn when it is the only pane, split after.
+  # .envrc is left to the interactive shell's direnv hook (~/.zshrc), which
+  # also unloads it on cd; a plain `source` would leave stale COMPOSE_* behind.
+  dir="$HOME/$proj"
+  [[ -d "$dir" ]] || dir="$HOME"
+  tmux new-window -n "$projName" -c "$dir"
 fi
 
 tmux select-window -t "$projName"

@@ -119,7 +119,7 @@ pane_lib::stash() {
 # ══ restore: bring a type's void back into the window ═══════════════
 # Returns 0 if something was restored, 1 if void was empty/absent.
 pane_lib::restore() {
-  local type="$1" size="${2:-35%}" wid="${3:-}"
+  local type="$1" size="${2:-40%}" wid="${3:-}"
   local vname vw side flag
   vname=$(pane_lib::void_name "$type" "$wid")
   tmux has-session -t "$vname" 2>/dev/null || return 1
@@ -149,7 +149,7 @@ pane_lib::restore() {
 
 # ══ spawn: split a new pane on the type's side, then lock its size ═══
 pane_lib::spawn() {
-  local type="$1" cmd="$2" size="${3:-35%}" workdir="${4:-}" wid="${5:-}"
+  local type="$1" cmd="$2" size="${3:-40%}" workdir="${4:-}" wid="${5:-}"
   local side flag
   side=$(pane_lib::spawn_side "$type")
   if [[ "$side" == "left" ]]; then
@@ -211,7 +211,7 @@ pane_lib::fullscreen_eligible() {
 
 # ══ toggle_pane: single source of truth for toggling side/fullscreen tools ══
 # Architecture:
-#   Left tools (35%):  nvim, db, applogs (one at a time on left)
+#   Left tools (40%):  nvim, db, applogs (one at a time on left)
 #   Right tools (60%): opencode (independent of left tools)
 #   Base/main:         user's shell or fullscreen editor
 #
@@ -221,7 +221,7 @@ pane_lib::fullscreen_eligible() {
 #   3. Zero stdout leak: no -PF output in run-shell context.
 #   4. Complete isolation: toggling left tools never touches right opencode.
 pane_lib::toggle_pane() {
-  local type="$1" spawn_cmd="$2" size="${3:-35%}" workdir="${4:-}" target="${5:-}"
+  local type="$1" spawn_cmd="$2" size="${3:-40%}" workdir="${4:-}" target="${5:-}"
 
   local t_flag=""
   [[ -n "$target" ]] && t_flag="-t $target"

@@ -36,6 +36,6 @@ fi
 
 pane_lib::toggle_pane "applogs" \
   "bash -c 'source .envrc && docker-logs-follow . app'" \
-  "35%" \
+  "40%" \
   "$project_dir" \
   "$target"

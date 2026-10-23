@@ -14,12 +14,11 @@ Key bindings
   tmux (prefix = Ctrl-b)
     Ctrl-o         = toggle opencode   (right pane, 60%)
     Ctrl-Shift-L   = opencode: new session + reload context   (opencode pane only)
-    Ctrl-n         = toggle nvim       (left pane, 35%)
+    Ctrl-n         = toggle nvim       (left pane, 40%)
     Ctrl-/ Ctrl-_  = toggle db
     Ctrl-a         = toggle applogs
-    Ctrl-g         = toggle focus
-    Ctrl-s         = open-project      (browse repos)
-    Ctrl-M-v / -f  = jump to nvim-config / farmweb
+    Alt-g          = toggle focus
+    Ctrl-s         = open-project      (open a window at the repo path, no editor)
     Ctrl-M-s       = refresh project list
     Alt-H / L      = move between windows
     Alt-J / K      = move between panes

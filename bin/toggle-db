@@ -24,6 +24,6 @@ fi
 
 pane_lib::toggle_pane "db" \
   "bash -c 'source .envrc && docker compose exec db psql -U ${proj_name} -d ${proj_name} -P expanded=auto -P pager=off'" \
-  "35%" \
+  "40%" \
   "$project_dir" \
   "$target"

@@ -10,6 +10,6 @@ path=$(tmux display-message ${target:+-t "$target"} -p '#{pane_current_path}')
 
 pane_lib::toggle_pane "nvim" \
   "bash -c 'source .envrc 2>/dev/null; nvim'" \
-  "35%" \
+  "40%" \
   "$path" \
   "$target"

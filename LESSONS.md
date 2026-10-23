@@ -160,9 +160,12 @@ tmux server 把 config 留在記憶體 → 改 `tmux.conf` 必須 `source-file` 
 | 改了什麼 | 要重載？ |
 |---|---|
 | `tmux.conf` 的 binding | ✅ `source-file` |
+| **移除** binding | ✅ `source-file` **不會**移除它 → 另跑 `tmux unbind-key -n <key>` |
 | `bin/` 新增腳本 | ❌（PATH 已含）|
 | 重新命名腳本（binding 引用舊名） | ✅ |
 | `.zshrc`／`.bashrc` 的 PATH | ✅ 重啟 tmux server |
+
+❗ **`source-file` 只加不減**（3.8 實測）：把 `bind-key -n C-M-v …` 從 `tmux.conf` 刪掉再 `source-file`，回傳 0、零錯誤，但 `list-keys` 仍看得到舊 binding —— 因為 server 的 key table 是累加的，config 只是重播一次。要真的拿掉必須顯式 `tmux unbind-key -n C-M-v`（下次 server 重啟才會自然消失）。
 
 **兩個硬要求**：
 
@@ -339,3 +342,33 @@ python3 ~/.cache/nvim/packer_hererocks/hererocks.py \
 **用法**：`nvim-uid <url>` 單次渲染並結束；`nvim-uid` 常駐聽 FIFO。
 
 **同一個渲染器也服務 telescope 的圖片預覽**：`_G.media_files()`（`nvim.d/my/telescope.lua`）用 `chafa` 當 termopen previewer，因此 `telescope-media-files.nvim`（內含 ueberzug wrapper）已不需要。
+
+### 5.7 pane 的環境變數：非互動 shell 與 direnv 的兩個坑
+
+**症狀**：pane 內工具少了 `COMPOSE_PROJECT_NAME`／`COMPOSE_FILE`，`docker compose`／`reboot-dev` 打到別的 stack（或看起來正常、其實打到目錄名 default）。
+
+**根因 1 — toggle 開的 pane 是非互動 shell**：tmux 執行 pane 命令走 `zsh -c`（實測 `$-` = `569X`，沒有 `i`），不讀 `.zshrc` ⇒ 沒有 nvm 的 PATH，也**沒有 direnv hook**。所以 env 必須由該 pane 的啟動命令自己載，不能指望「shell 已經載好」。
+
+**根因 2 — `eval "$(direnv export bash)"` 空輸出仍回 0**：direnv 未 allow、或目錄沒有 `.envrc` 時輸出為空且 **exit 0** ⇒ `eval ""` 回 0 ⇒ 後面的 `|| . ./.envrc` **永遠不會跑**，症狀是「靜默無 env」。必須先驗輸出非空：
+
+```bash
+[ -f .envrc ] && { _e=$(direnv export bash 2>/dev/null); [ -n "$_e" ] && eval "$_e" || . ./.envrc 2>/dev/null; }
+```
+
+**根因 3 — 裸 `source` 只加不減**：`cd` 離開後上一個 repo 的 `COMPOSE_*` 仍在，這正是打錯 stack 的成因。interactive shell 交給 direnv hook（`~/.zshrc`），它會 `unset` 不屬於當前目錄的變數；非互動 pane 沒有這個好處，只能選「明確覆寫」的 `.envrc`。
+
+**現值**：`bin/open-project` 只開一個停在 repo 路徑的 shell（不啟編輯器、不載 env）；env 由該 shell 的 direnv hook 負責。`bin/toggle-opencode` 在 spawn 時自己載（direnv 優先、裸 source 退回）；`bin/toggle-nvim` 用裸 `source`（本 repo 的 `.envrc` 實測為純 shell，可通）。
+
+**分割比例取決於「誰先佔滿視窗」**：nvim 全螢幕後切 60% → 40:60；opencode 全螢幕後切 **40%** → 40:60。要兩個順序一致，左側工具就必須是 40%（35% 會使後按的那序變成 35:65）。
+
+**驗證**：拋棄式 server ＋ `TMUX=<socket>,0,0`，讓腳本打到探針而非現行 server：
+
+```bash
+tmux -L probe -f /dev/null new-session -d -x 200 -y 50
+SOCK=$(tmux -L probe display -p '#{socket_path}')
+TMUX="$SOCK,0,0" bin/open-project nvim-config      # 開窗、停在 repo 路徑
+TMUX="$SOCK,0,0" bin/toggle-nvim "@1"              # 單一 main pane → 全螢幕接管
+TMUX="$SOCK,0,0" bash -c 'source bin/tmux-panes.sh; pane_lib::toggle_pane opencode "sleep 60" 60% /tmp @1'
+tmux -L probe list-panes -t @1 -F '#{pane_left}|#{pane_width}'   # 期望 0|79 / 80|120
+```
+
