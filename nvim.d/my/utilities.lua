@@ -91,35 +91,39 @@ _G.deprecate_keymap = function(map, key, alt)
   vim.keymap.set(map, key, deprecate(alt))
 end
 
--- project specific key mappings with which-key
-_G.which_key_map = function(prefix, mappings)
+-- Project-specific key mappings with which-key.
+--
+-- The helper accepts both spec shapes so existing project files keep working:
+--   which_key_map({ { "<leader>x", rhs, desc = "..." }, ... })   -- v3 list form
+--   which_key_map("r", { w = { rhs, "desc" }, ... })             -- legacy prefix form
+--
+-- Legacy specs are parsed with version = 1 (the supported path; register() is
+-- deprecated upstream). notify = false keeps which-key from reporting the legacy
+-- spec as a checkhealth diagnostic on every start.
+_G.which_key_map = function(spec, mappings)
   local wkok, which_key = pcall(require, "which-key")
   if not wkok then
     print "which-key.nvim is required but not found"
     return
   end
-  which_key.register(mappings, {
+
+  if type(spec) == "table" then
+    which_key.add(spec)
+    return
+  end
+
+  local legacy = {
+    prefix = spec,
     mode = "n",
-    prefix = prefix,
-    buffer = nil,
     silent = true,
     noremap = true,
     nowait = true,
-  })
-end
-
-
-_G.which_key_v3_map = function(mappings)
-  local wkok, wk = pcall(require, "which-key")
-  if not wkok then
-    print "which-key.nvim is required but not found"
-    return
+  }
+  for k, v in pairs(mappings or {}) do
+    legacy[k] = v
   end
-  wk.add(mappings, {
-    mode = "n",
-    buffer = nil,
-    silent = true,
-    remap = false,
-    nowait = true,
-  })
+  which_key.add(legacy, { version = 1, notify = false })
 end
+
+-- Backward compatibility alias: in case any repo/branch still calls which_key_v3_map
+_G.which_key_v3_map = _G.which_key_map
