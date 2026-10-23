@@ -1,43 +1,49 @@
-local status_ok, configs = pcall(require, "nvim-treesitter.configs")
-if not status_ok then
+-- nvim-treesitter (main branch, required by nvim 0.12) no longer ships
+-- `nvim-treesitter.configs`; it is now only a parser installer/updater.
+-- Highlighting and indentation have to be wired up by hand.
+local ok, ts = pcall(require, "nvim-treesitter")
+if not ok then
   return
 end
 
--- now postresql is still under development
--- when ready, we can edit the below file to support embedded sql in javascript
--- vi ~/.local/share/nvim/site/pack/packer/start/nvim-treesitter/queries/ecma/injections.scm
+-- The main branch keeps its bundled queries in <plugin>/runtime, which is NOT
+-- added to 'runtimepath' when the plugin lives under pack/*/start. Without this
+-- line queries/{highlights,indents}.scm resolve to nil and both features stay
+-- silent no-ops (measured: highlight attached=false on a .js buffer).
+local plugin_dir = vim.fn.stdpath("data") .. "/site/pack/packer/start/nvim-treesitter"
+if vim.uv.fs_stat(plugin_dir .. "/runtime") then
+  vim.opt.rtp:append(plugin_dir .. "/runtime")
+end
 
-configs.setup {
-  ensure_installed = {"lua", "vim", "javascript", "python"},
-  sync_install = false, -- install languages synchronously (only applied to `ensure_installed`)
-  ignore_install = { "" }, -- List of parsers to ignore installing
-  highlight = {
-    enable = true, -- false will disable the whole extension
-    disable = { "" }, -- list of language that will be disabled
-    additional_vim_regex_highlighting = true,
-  },
-  indent = { enable = true, disable = { "javascript" } },   -- turn off for js because it can't auto indent embedded sql
-  playground = {
-    enable = true,
-    disable = {},
-    updatetime = 25, -- Debounced time for highlighting nodes in the playground from source code
-    persist_queries = false, -- Whether the query persists across vim sessions
-    keybindings = {
-      toggle_query_editor = 'o',
-      toggle_hl_groups = 'i',
-      toggle_injected_languages = 't',
-      toggle_anonymous_nodes = 'a',
-      toggle_language_display = 'I',
-      focus_language = 'f',
-      unfocus_language = 'F',
-      update = 'R',
-      goto_node = '<cr>',
-      show_help = '?',
-    },
-  },
-  -- context_commentstring nvim-treesitter module is deprecated, use require('ts_context_commentstring').setup {} and set vim.g.skip_ts_context_commentstring_module = true to speed up loading instead.
-  -- context_commentstring = {
-  --   enable = true,
-  --   enable_autocmd = false,
-  -- },
-}
+ts.setup {}
+
+local ensure_installed = { "lua", "vim", "javascript", "python" }
+
+-- Only reach the network for parsers that are genuinely missing.
+local missing = vim.tbl_filter(function(lang)
+  return vim.treesitter.language.add(lang) == nil
+end, ensure_installed)
+if #missing > 0 then
+  ts.install(missing)
+end
+
+-- javascript opts out of treesitter indent: its indents.scm walks adjacent
+-- nodes and mis-indents embedded SQL. Keep Vim's GetJavascriptIndent instead.
+local indent_disabled = { javascript = true }
+
+vim.api.nvim_create_autocmd("FileType", {
+  group = vim.api.nvim_create_augroup("my_treesitter", { clear = true }),
+  callback = function(ev)
+    local ft = vim.bo[ev.buf].filetype
+    local lang = vim.treesitter.language.get_lang(ft) or ft
+    if vim.treesitter.language.add(lang) == nil then
+      return
+    end
+
+    pcall(vim.treesitter.start, ev.buf)
+
+    if not indent_disabled[lang] and vim.treesitter.query.get(lang, "indents") then
+      vim.bo[ev.buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+    end
+  end,
+})

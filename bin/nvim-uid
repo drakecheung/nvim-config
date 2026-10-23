@@ -1,85 +1,110 @@
 #!/usr/bin/env node
+//
+// nvim-uid — screenshot a URL and draw it inside the current terminal pane.
+//
+//   nvim-uid <url>    render once and exit (quick test)
+//   nvim-uid          daemon: listen on a FIFO for `url <url>` messages
+//
+// Renderer is chafa (ANSI blocks): no tmux passthrough, no X11 overlay, and
+// `tmux capture-pane` can verify the output. Replaced ueberzug, which is dead
+// on Python 3.12.
 
 const puppeteer = require('puppeteer');
 const fs = require('fs');
-const {promisify} = require('util');
 const child_process = require('child_process');
 
-const projectName = process.env.COMPOSE_PROJECT_NAME;
+const projectName = process.env.COMPOSE_PROJECT_NAME || 'default';
 const pipePath = `/tmp/nvim-uid-${projectName}.sock`;
+const imgDir = `${process.env.HOME}/.nvim-uid`;
+const imgPath = `${imgDir}/web.png`;
 
-const execP = (cli, options) =>
-  new Promise((resolve, reject) => {
-    child_process.exec(cli, options, (error, stdout) => {
-      error ? reject(error.message) : resolve(stdout);
-    });
+// Ubuntu 24.04 restricts unprivileged user namespaces, so Chrome's own sandbox
+// cannot start (zygote_host_impl_linux.cc: "No usable sandbox"). --no-sandbox
+// is the documented workaround; it also means any page rendered here runs
+// unsandboxed, so only point this at your own dev servers.
+const LAUNCH = {
+  acceptInsecureCerts: true,
+  args: ['--no-sandbox'],
+  defaultViewport: { width: 1024, height: 768, deviceScaleFactor: 1.5 },
+};
+
+// Target this process's own pane, not whatever tmux thinks is the active
+// client — `tmux display -p` without -t resolves to the most recently used
+// client and gives the wrong size in a detached or multi-client session.
+const paneSize = () => {
+  if (process.env.TMUX_PANE) {
+    return child_process
+      .execSync(
+        `tmux display-message -p -t '${process.env.TMUX_PANE}' '#{pane_width}x#{pane_height}'`,
+      )
+      .toString()
+      .trim();
+  }
+  return `${process.stdout.columns || 80}x${process.stdout.rows || 24}`;
+};
+
+const draw = () => {
+  process.stdout.write('\x1b[2J\x1b[H'); // clear pane, cursor home
+  child_process.execFileSync('chafa', [`--size=${paneSize()}`, imgPath], {
+    stdio: 'inherit',
   });
+};
 
-let browser = null;
-let fd = null;
+const shoot = async (page, url) => {
+  await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
+  await page.screenshot({ path: imgPath, fullPage: true });
+  console.log(`screenshot: ${imgPath}`);
+  draw();
+};
 
-const main = async () => {
-  browser = await puppeteer.launch({
-    ignoreHTTPSErrors: true,
-    defaultViewport: {
-      width: 1024,
-      height: 768,
-      deviceScaleFactor: 1.5,
-    },
-  });
+const once = async (url) => {
+  const browser = await puppeteer.launch(LAUNCH);
+  try {
+    await shoot(await browser.newPage(), url);
+  } finally {
+    await browser.close();
+  }
+};
+
+const daemon = async () => {
+  fs.mkdirSync(imgDir, { recursive: true });
+  const browser = await puppeteer.launch(LAUNCH);
   const page = await browser.newPage();
 
-  const previewer = child_process.spawn("ueberzug", ["layer", "--silent", "--parser", "bash"]);
-  previewer.stdin.setEncoding('utf-8');
-  previewer.stdout.pipe(process.stdout);
-
-  await execP(`rm -f ${pipePath}`);
+  child_process.spawnSync('rm', ['-f', pipePath]);
   child_process.spawnSync('mkfifo', [pipePath]);
-  fd = await promisify(fs.open)(pipePath, fs.constants.O_RDWR);
-  const stream = fs.createReadStream(null, {fd, autoClose: false});
-  console.log(`listening to ${pipePath}`);
-  stream.on('data', async (d) => {
-    const msg = d.toString();
-    console.log(`Received msg: ${msg}`);
-    const parts = msg.split(' ');
+  const fd = fs.openSync(pipePath, fs.constants.O_RDWR);
+  console.log(`listening on ${pipePath}`);
 
-    if (parts[0] === "url") {
-      const imgDir = `${process.env.HOME}/.nvim-uid`;
-      if (!fs.existsSync(imgDir)) {
-        console.log(`${imgDir} does not exists, please create with:`);
-        console.log(`  mkdir -p ~/.nvim-uid`);
-        console.log(`\nand even make it a ramdisk`);
-        console.log(`  sudo mount -t tmpfs -o size=100m tmpfs ~/.nvim-uid`);
-        return;
-      }
-      const imgPath = `${imgDir}/web.png`;
-      await page.goto(parts[1]);
-      await page.screenshot({
-        path: imgPath,
-        fullPage: true,
-      });
-      const size = await execP("tmux lsp -F '#{pane_height} #{pane_width}' | head -n1");
-      const [h, w] = size.trim().split(' ');
-      const cmd = [
-        'declare -Ap cmd=([action]=add [identifier]="preview"',
-        '[x]="0" [y]="1"',
-        '[scaler]="fit_contain"',
-        // '[scaler]="forced_cover"',
-        // '[scaling_position_x]="0.5"',
-        // '[scaling_position_y]="0.5"',
-        `[width]="${w}" [height]="${h}" [path]="${imgPath}")`
-      ].join(' ');
-      previewer.stdin.write(`${cmd}\n`);
-      console.clear();
+  const stream = fs.createReadStream(null, { fd, autoClose: false });
+  stream.on('data', async (d) => {
+    // Split on the first run of whitespace only: URLs may legitimately contain
+    // spaces (data: URLs do), so `split(/\s+/)` would truncate them.
+    const msg = d.toString().trim();
+    const sep = msg.search(/\s/);
+    if (sep < 0 || msg.slice(0, sep) !== 'url') return;
+    const url = msg.slice(sep).trim();
+    if (!url) return;
+    console.log(`received: ${url}`);
+    try {
+      await shoot(page, url);
+    } catch (e) {
+      console.error(`render failed: ${e.message}`);
     }
   });
-}
 
-main();
+  const cleanup = () => {
+    browser.close().catch(() => {});
+    try { fs.closeSync(fd); } catch (_) {}
+    try { fs.unlinkSync(pipePath); } catch (_) {}
+    process.exit(0);
+  };
+  process.on('SIGINT', cleanup);
+  process.on('SIGTERM', cleanup);
+};
 
-process.on('SIGINT', () => {
-  browser.close();
-  fs.closeSync(fd);
-  fs.unlinkSync(pipePath);
-  process.kill(process.pid, 'SIGTERM');
+const url = process.argv[2];
+(url ? once(url) : daemon()).catch((e) => {
+  console.error(e.message);
+  process.exit(1);
 });

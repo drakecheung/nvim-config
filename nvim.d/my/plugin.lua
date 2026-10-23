@@ -209,7 +209,6 @@ packer.startup(function(use, use_rocks)
   -- download and install ripgrep deb from https://github.com/BurntSushi/ripgrep/releases
   use "nvim-telescope/telescope.nvim"
   use {'nvim-telescope/telescope-fzf-native.nvim', run = 'make'}
-  use 'nvim-telescope/telescope-media-files.nvim'
 
   -- Treesitter
   -- use {"nvim-treesitter/nvim-treesitter", run = ":TSUpdate"}

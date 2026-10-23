@@ -40,6 +40,7 @@
 ### 環境假設
 
 - tmux **3.8**（source build，`/usr/local/bin/tmux`）；nvim **v0.12.6**（appimage）。
+- node **24.22.1**（nvm default；`puppeteer` 25 要求 ≥ 22.12）。
 - shell `/usr/bin/zsh`；terminal **ghostty**。
 - `~/.tmux.conf`、`~/.config/ghostty/config.ghostty` 等皆為指向本 repo 的 **symlink**。
 - 任何探針一律用**拋棄式 server**（`tmux -L <name>`），不要污染現行 server。

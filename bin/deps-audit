@@ -1,0 +1,126 @@
+#!/usr/bin/env bash
+#
+# deps-audit — read-only dependency drift report.
+#
+# This script NEVER updates, installs or writes anything inside the repo.
+# It answers four questions:
+#   1. are the tools we depend on present, and at which version?
+#   2. is each nvim plugin behind its upstream branch?
+#   3. does every module our config `require`s still resolve?
+#   4. which npm packages are behind?
+#
+# Exit code: 0 = clean, 1 = drift found (so it can gate other scripts).
+
+set -uo pipefail
+
+PLUGIN_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/nvim/site/pack/packer/start"
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+drift=0
+
+section() { printf '\n\033[1m== %s ==\033[0m\n' "$1"; }
+
+# ---------------------------------------------------------------- tool versions
+section "tool versions"
+for b in nvim tmux ghostty rg fzf node npm tree-sitter chafa; do
+  if ! command -v "$b" >/dev/null 2>&1; then
+    printf '  %-14s \033[33mMISSING\033[0m\n' "$b"
+    continue
+  fi
+  case "$b" in
+    nvim)    v=$(nvim --version | head -1) ;;
+    tmux)    v=$(tmux -V) ;;
+    ghostty) v=$(ghostty +version 2>/dev/null | head -1) ;;
+    *)       v=$("$b" --version 2>/dev/null | head -1) ;;
+  esac
+  printf '  %-14s %s\n' "$b" "$v"
+done
+
+# ------------------------------------------------------------ plugin drift
+section "nvim plugins vs upstream"
+
+check_plugin() {
+  local dir="$PLUGIN_DIR/$1" head branch remote behind
+  [[ -d "$dir/.git" ]] || return 0
+  head=$(git -C "$dir" rev-parse HEAD 2>/dev/null) || return 0
+  branch=$(git -C "$dir" rev-parse --abbrev-ref HEAD 2>/dev/null)
+  if [[ "$branch" == "HEAD" ]]; then
+    printf '  \033[33m%-11s\033[0m %-34s pinned tag\n' PINNED "$1"
+    return 0
+  fi
+  remote=$(git -C "$dir" ls-remote origin "refs/heads/$branch" 2>/dev/null | cut -f1)
+  if [[ -z "$remote" ]]; then
+    printf '  \033[33m%-11s\033[0m %-34s origin unreachable\n' UNKNOWN "$1"
+  elif [[ "$head" == "$remote" ]]; then
+    printf '  \033[32m%-11s\033[0m %s\n' up-to-date "$1"
+  else
+    behind=$(git -C "$dir" rev-list --count "$head"..origin/"$branch" 2>/dev/null || echo '?')
+    printf '  \033[31m%-11s\033[0m %-34s %s behind\n' BEHIND "$1" "$behind"
+  fi
+}
+export -f check_plugin
+export PLUGIN_DIR
+
+plugin_report=$(ls -d "$PLUGIN_DIR"/*/ 2>/dev/null \
+  | sed 's|.*/\([^/]*\)/$|\1|' \
+  | xargs -P 12 -I{} bash -c 'check_plugin "$@"' _ {})
+
+printf '%s\n' "$plugin_report" | sort -k2
+printf '%s\n' "$plugin_report" | grep -q 'BEHIND' && drift=1
+
+# --------------------------------------------------------- config module probe
+section "modules required by config"
+
+tmpmods=$(mktemp)
+# Only config-time requires (line starts with code) and never commented-out ones:
+# `-- require("x")` or `# :lua require("x")` must not be reported as missing.
+grep -rhE '^[^[:space:]].*require\(["'"'"'][^"'"'"']+["'"'"']\)' "$REPO_DIR/nvim.d" "$REPO_DIR/vimrc.lua" 2>/dev/null \
+  | grep -vE '^[[:space:]]*(--|#)' \
+  | grep -oE 'require\(["'"'"'][^"'"'"']+["'"'"']\)' \
+  | sed -E 's/require\(["'"'"']([^"'"'"']+)["'"'"']\)/\1/' | sort -u > "$tmpmods"
+
+total_mods=$(grep -c . "$tmpmods")
+missing_mods=$(nvim --headless -c "lua
+local miss = {}
+for line in io.lines('$tmpmods') do
+  if line ~= '' and not (pcall(require, line)) then
+    miss[#miss + 1] = line
+  end
+end
+io.stdout:write(table.concat(miss, '\n'))
+" -c 'qa!' 2>/dev/null)
+rm -f "$tmpmods"
+
+if [[ -z "${missing_mods//[[:space:]]/}" ]]; then
+  printf '  \033[32mall %s modules resolve\033[0m\n' "$total_mods"
+else
+  printf '  \033[31mUNRESOLVED (config silently no-ops):\033[0m\n'
+  printf '%s\n' "$missing_mods" | sed 's/^/    - /'
+  drift=1
+fi
+
+# ---------------------------------------------------------------------- npm
+section "npm"
+if [[ -f "$REPO_DIR/package.json" ]]; then
+  cd "$REPO_DIR" || exit 1
+  pkgs=$(node -e 'console.log(Object.keys(require("./package.json").dependencies || {}).join(" "))' 2>/dev/null)
+  for pkg in $pkgs; do
+    cur=$(node -e "try{process.stdout.write(require('./node_modules/$pkg/package.json').version)}catch(e){process.stdout.write('not installed')}" 2>/dev/null)
+    # Ask the registry directly: `npm outdated` reads cached packument data and
+    # has reported a stale "latest" here more than once.
+    latest=$(npm view "$pkg" version 2>/dev/null)
+    if [[ "$cur" == "$latest" ]]; then
+      printf '  \033[32m%-10s\033[0m %s\n' up-to-date "$pkg $cur"
+    else
+      printf '  \033[31m%-10s\033[0m %-20s installed=%s latest=%s\n' BEHIND "$pkg" "$cur" "$latest"
+      drift=1
+    fi
+  done
+fi
+
+printf '\n'
+if [[ $drift -eq 0 ]]; then
+  printf '\033[32mNo drift detected.\033[0m\n'
+else
+  printf '\033[31mDrift detected — review before updating.\033[0m\n'
+fi
+exit $drift

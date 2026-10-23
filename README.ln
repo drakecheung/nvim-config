@@ -63,10 +63,13 @@ Environment
       http://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/
     sudo dpkg -i libssl1.1_*.deb && rm *.deb
 
-  nodejs 20, eslint
-    sudo apt remove nodejs libnode-dev libnode72
-    curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-    sudo apt install -y nodejs
+  nodejs 24 (LTS), eslint
+    nvm is the expected manager (nvm install 24.22.1 && nvm alias default 24.22.1)
+    puppeteer 25 requires node >= 22.12 — node 20 is not enough
+    on a system without nvm:
+      sudo apt remove nodejs libnode-dev libnode72
+      curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
+      sudo apt install -y nodejs
     sudo npm install -g eslint
 
   neovim
@@ -91,6 +94,9 @@ Environment
 
   fdfind: for searching files by name (used in telescope as well)
     sudo apt-get install fd-find
+
+  chafa: image preview (telescope media picker + nvim-uid page render)
+    sudo apt-get install chafa
 
   fzf: for project switching (tmux)
     sudo apt-get install fzf
@@ -130,11 +136,7 @@ Optional for various LSP servers
   ruby
     sudo apt-get install ruby
 
-  ueberzug to preview images
-    sudo apt install -y libx11-dev x11proto-xext-dev libxext-dev
-    pip3 install ueberzug
-
-  node packages (puppeteer → pug preview, svg-term-cli → recordings)
+  node packages (puppeteer → pug preview + nvim-uid screenshots, svg-term-cli → recordings)
     npm install     # once, in this folder
 
   dependency for previewing font files (ttf, otf) — bin/fontpreview needs: xdotool sxiv convert fzf

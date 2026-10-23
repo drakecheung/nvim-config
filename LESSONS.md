@@ -25,6 +25,7 @@
 3. **掃棄用 API**：`:checkhealth vim.deprecated` → 對照 §2
 4. **重啟 nvim**，確認零 startup error
 5. **改了 tmux binding 就重載 tmux** → §3.3
+6. **跑 `bin/deps-audit`**（唯讀）：確認 plugin 未落後、config `require` 的模組全部解析成功、npm 無漂移
 
 ## 2. nvim 0.12 遷移
 
@@ -45,6 +46,7 @@ vim.tbl_flatten = function(t) return vim.iter(t):flatten():totable() end
 | `vim.tbl_flatten(t)` | `vim.iter(t):flatten():totable()` |
 | `vim.lsp.with(h, opts)` | 手寫 wrapper → §2.2 |
 | `nvim-treesitter.ts_utils` | 內建 `vim.treesitter.*` → §2.2 |
+| `require('vim.highlight').on_yank(opts)` | `vim.hl.on_yank(opts)` |
 
 **為什麼用 alias 而非逐個改 caller**：packer、bufferline、nvim-cmp、plenary、schemastore 都還在呼叫 `vim.tbl_islist`；改 caller 既脆弱又會被下次 `:PackerSync` 清掉，一行 alias 一次性解決。
 
@@ -59,6 +61,40 @@ vim.tbl_flatten = function(t) return vim.iter(t):flatten():totable() end
 - `lspconfig.setup` → `vim.lsp.config(server, {...})` 宣告 ＋ `vim.lsp.enable(server)` 啟用；keymap 改用全域 `LspAttach` autocmd（取代逐 server 的 `on_attach`）。Mason 只裝 binary，`mason-lspconfig.setup` 不再帶 `handlers`。
 - `ts_utils` 移除：`ts.get_node_at_cursor()` → `vim.treesitter.get_node({ bufnr = 0 })`，但它在 0.12 **可能回 nil**；較穩的是 `root:named_descendant_for_range(row-1, col, row-1, col)`。`ts.get_node_text(node)` → `vim.treesitter.get_node_text(node, bufnr)`。
 - capabilities 用 `require("cmp_nvim_lsp").default_capabilities()`，傳進 `vim.lsp.config()`。
+
+### 2.3 nvim-treesitter `main` 分支：`configs` 模組已消失（靜默失效）
+
+**症狀**：啟動零錯誤，但 `.js`／`.py` **完全沒有 tree-sitter 高亮**，indent 也沒套用。畫面上仍有顏色（Vim regex syntax），所以看不出來。
+
+**根因（兩層，缺一不可）**：
+
+1. `main` 分支（nvim 0.12 必需）**已移除 `nvim-treesitter.configs`**。舊設定開頭 `pcall(require, "nvim-treesitter.configs")` 失敗 → 整份設定 `return`，`ensure_installed`／`highlight`／`indent` 全部沒生效。
+2. `TS.setup()` 現在**只設定 parser 安裝路徑**，不註冊 autocmd、不開高亮。高亮與 indent 要自己接。
+3. 附帶陷阱：`main` 分支把 query 放在 `<plugin>/runtime/queries/`；packer 安裝時 `runtime/` **不在 `runtimepath`** → `queries/{highlights,indents}.scm` 解析成 `nil`，即使接了 autocmd，indent 仍會靜默失效。
+
+**為何不能只靠 nvim 0.12 原生**：原生只覆蓋**內建 parser**（`lua`、`vim`…）。實測 `.js` → `attached=false`（parser 存在，但沒人呼叫 `vim.treesitter.start`）。
+
+**修法**（現值見 `nvim.d/my/treesitter.lua`）：
+
+```lua
+vim.opt.rtp:append(plugin_dir .. "/runtime")        -- ① query 才找得到
+require("nvim-treesitter").setup {}                 -- ② 不是 .configs
+vim.api.nvim_create_autocmd("FileType", {           -- ③ 高亮 ＋ indent 自己接
+  callback = function(ev)
+    local lang = vim.treesitter.language.get_lang(vim.bo[ev.buf].filetype)
+    if vim.treesitter.language.add(lang) == nil then return end
+    pcall(vim.treesitter.start, ev.buf)
+    vim.bo[ev.buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+  end,
+})
+```
+
+**兩個量測陷阱**（我自己踩過）：
+
+- `require("nvim-treesitter").indentexpr()` **直接呼叫一定回 0** —— 它讀 `v:lnum`，而 `v:lnum` 只在 Vim 求值 indentexpr 時才有值。要驗證必須 `normal! ==` 後看行首縮排。
+- 驗高亮看 `require("vim.treesitter.highlighter").active[buf]`，不要看畫面顏色。
+
+**javascript 例外**：不套 treesitter indent（原設定即如此：`indents.scm` 對 embedded SQL 失效），保留 Vim 的 `GetJavascriptIndent()`。
 
 ## 3. tmux 3.8
 
@@ -263,3 +299,22 @@ python3 ~/.cache/nvim/packer_hererocks/hererocks.py \
 ```
 
 **先問 rocks 是否真的需要**：`lua-cjson` 自 nvim 0.6 起已被 `vim.json` 取代；`f-strings` 只是裝飾性、沒有 plugin 依賴它。檢查 `nvim.d/my/plugin.lua` 的 `use_rocks` —— 沒人需要就刪掉那些行，整條 hererocks 依賴鏈一起消失。
+
+### 5.6 `nvim-uid`：ueberzug 已死 → chafa；puppeteer 25 → Node ≥ 22.12
+
+**功用**：FIFO 收 `url <...>` → puppeteer 截圖到 `~/.nvim-uid/web.png` → 畫進當前 pane。FIFO 路徑 `/tmp/nvim-uid-<COMPOSE_PROJECT_NAME>.sock`。
+
+**三個升級障礙**（都是「換環境才炸」型）：
+
+1. **`ueberzug` 在 Python 3.12 已死**（RuntimeError，專案停止維護）→ 改 `chafa`：ANSI 區塊、不需 tmux passthrough、且 `tmux capture-pane` 可客觀驗證輸出。
+2. **puppeteer 25 要求 Node ≥ 22.12** → nvm 升到 24 LTS（`nvm install 24.22.1 && nvm alias default 24.22.1`）。nvm 的全局套件是 per-version：切換前先 `npm ls -g --depth=0` 確認沒有要重裝的。
+3. **Ubuntu 24.04 AppArmor 限制 unprivileged userns** → Chrome 起不來（`zygote_host_impl_linux.cc: No usable sandbox`）→ launch 加 `args: ['--no-sandbox']`。**只指向自家 dev server**：無沙箱渲染任意網頁等於開後門。
+
+**兩個實作陷阱**：
+
+- **`tmux display -p` 會指到錯的 client**（detached／多 client 時回錯值或直接拋錯）→ 一律 `tmux display-message -p -t "$TMUX_PANE"`。
+- **FIFO 訊息不能用 `split(/\s+/)` 取 URL** —— URL 可含空白（`data:` URL 就是），會被截斷成半條字串，症狀是「畫面全白」。用第一個空白切分即可。
+
+**用法**：`nvim-uid <url>` 單次渲染並結束；`nvim-uid` 常駐聽 FIFO。
+
+**同一個渲染器也服務 telescope 的圖片預覽**：`_G.media_files()`（`nvim.d/my/telescope.lua`）用 `chafa` 當 termopen previewer，因此 `telescope-media-files.nvim`（內含 ueberzug wrapper）已不需要。

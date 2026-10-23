@@ -53,7 +53,7 @@ au! BufWritePost project.vim.lua luafile %
 augroup _general_settings
   autocmd!
   autocmd FileType qf,help,man,lspinfo nnoremap <silent> <buffer> <c-c> :close<CR>
-  autocmd TextYankPost * silent!lua require('vim.highlight').on_yank({higroup = 'Search', timeout = 200})
+  autocmd TextYankPost * silent!lua vim.hl.on_yank({higroup = 'Search', timeout = 200})
   autocmd FileType qf set nobuflisted
 augroup end
 

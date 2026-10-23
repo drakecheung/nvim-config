@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # NOTE: node is required by package.json (puppeteer, svg-term-cli)
-# Version is not strictly checked — any recent node (18+) works.
+# puppeteer 25 requires node >= 22.12 — older node aborts at runtime, not here.
 if ! which node > /dev/null 2>&1; then
   echo "node not found, aborting..."
   exit 1
