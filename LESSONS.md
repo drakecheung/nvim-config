@@ -26,6 +26,7 @@
 4. **重啟 nvim**，確認零 startup error
 5. **改了 tmux binding 就重載 tmux** → §3.3
 6. **跑 `bin/deps-audit`**（唯讀）：確認 plugin 未落後、config `require` 的模組全部解析成功、npm 無漂移
+7. **跑 `bin/config-audit`**（唯讀）：確認沒有絕對家目錄路徑、overlay 載入線仍在檔尾、overlay 載得起來
 
 ## 2. nvim 0.12 遷移
 
@@ -387,4 +388,28 @@ TMUX="$SOCK,0,0" bin/toggle-nvim "@1"              # 單一 main pane → 全螢
 TMUX="$SOCK,0,0" bash -c 'source bin/tmux-panes.sh; pane_lib::toggle_pane opencode "sleep 60" 60% /tmp @1'
 tmux -L probe list-panes -t @1 -F '#{pane_left}|#{pane_width}'   # 期望 0|79 / 80|120
 ```
+
+### 5.8 主機相依的兩件事：外部工具、家目錄路徑（都會靜默失敗）
+
+**① 呼叫外部工具前先 `executable()` 檢查**：`io.popen("xclip …", "w")` 在工具不存在時**不會回錯**，write 進去的東西直接消失 —— 症狀是「按了貼上沒反應」。
+
+```lua
+-- 實測（本機）：executable("xclip") == 0、xsel 存在 → 舊寫法靜默失效，改用偵測後挑一個
+for _, cmd in ipairs({ "wl-copy", "xclip -selection clipboard", "xsel --clipboard --input", "pbcopy" }) do
+  if vim.fn.executable(cmd:match("^(%S+)")) == 1 then … return true end
+end
+```
+
+全都沒有時退回 `vim.fn.setreg("+", text)` 並 `vim.notify` 提示一次（用 flag 去重，避免每次操作都吵）。現值在 `nvim.d/my/send.lua` 的 `M.copy_to_clipboard`。
+
+**② swap／undo 目錄不要寫死 `$HOME`**：`o.directory`／`o.undodir` 寫成 `/home/<user>/…` 時，在 `$HOME` 不同的機器上**兩者都靜默失效**（swap 落空、persistent undo 完全沒作用，且沒有錯誤訊息）。改用 nvim 自己的 state 目錄，並先建立：
+
+```lua
+local state_tmp = vim.fn.stdpath("state") .. "/tmp"
+vim.fn.mkdir(state_tmp, "p")
+o.directory = state_tmp
+o.undodir = state_tmp
+```
+
+**通用判準**：設定檔裡只要出現「絕對家目錄路徑」就是換機定時炸彈 —— 用 `$HOME`／`stdpath`／symlink 反推（後者見 §3.3 的 `@nvc_bin`）。`bin/config-audit` 的第 1 項會掃出來（**連本機使用者的路徑也算違規**，因為換 device 一樣壞）。
 

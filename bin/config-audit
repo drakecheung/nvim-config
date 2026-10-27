@@ -35,11 +35,11 @@ hits=$(
   grep -rnE '/home/[a-z0-9_.-]+/' $CONFIG_DIRS 2>/dev/null
 ) || true
 # 只檢查「生效中的」行：整行註解（# / -- / "）不算設定值，不影響行為。
-foreign=$(printf '%s\n' "$hits" | grep -vE '^[^:]+:[0-9]+:[[:space:]]*(#|--|")' | grep -v "/home/${USER}/" | grep -v '^$' || true)
+foreign=$(printf '%s\n' "$hits" | grep -vE '^[^:]+:[0-9]+:[[:space:]]*(#|--|")' | grep -v '^$' || true)
 if [ -z "$foreign" ]; then
-  ok "1 無外來絕對路徑（只允許 /home/${USER}/…）"
+  ok "1 無絕對家目錄路徑（連本機使用者的也不允許：換 device 會指到不存在的位置）"
 else
-  bad "1 出現非本機使用者的絕對路徑（換 device 必壞）："
+  bad "1 出現絕對家目錄路徑（換 device 必壞，改用 \$HOME／stdpath／symlink 反推）："
   printf '%s\n' "$foreign" | sed 's/^/         /'
 fi
 
