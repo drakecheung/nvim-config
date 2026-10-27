@@ -169,11 +169,12 @@ tmux server 把 config 留在記憶體 → 改 `tmux.conf` 必須 `source-file` 
 
 **兩個硬要求**：
 
-1. **binding 一律用絕對路徑**。`run-shell` 用的是 **tmux server 啟動時的 PATH**，未必等於你 shell 的：
+1. **binding 的路徑在執行期必須是絕對路徑**。`run-shell` 用的是 **tmux server 啟動時的 PATH**，未必等於你 shell 的，所以不能靠 PATH 找腳本：
    ```tmux
    # 脆弱：bind-key -n C-o run-shell "toggle-opencode"
-   bind-key -n C-o run-shell "$HOME/drake/nvim-config/bin/toggle-opencode '#{window_id}'"
+   bind-key -n C-o run-shell "#{@nvc_bin}/toggle-opencode '#{window_id}'"
    ```
+   `@nvc_bin` 由 `tmux.conf` 開頭一段 `run-shell` 從 `~/.tmux.conf` 的 symlink 反推 repo 路徑，找不到就以 `bin/toggle-opencode` 可執行為標記，依序試 `$HOME/drake/nvim-config`、`$HOME/drakecheung/nvim-config`、`$HOME/nvim-config` 三個既有佈局 —— 換機器不必改檔。實測：拋棄式 server 載入後 `show-options -gv @nvc_bin` 得到該 repo 的 `bin`。
 2. **`'#{window_id}'` 是必要參數，不是裝飾**。沒有 target 時，toggle 內部的 `tmux display-message -p '#{window_id}'` 會對到「最活躍 client」→ 可能讀到別的 session 的 window → stash/restore 指錯 void session。
 
 **查 binding**：`tmux list-keys | grep C-o`。❗ `list-keys` **沒有 `-n` 旗標**（tmux 3.7b 會回 `unknown flag`）。
@@ -187,6 +188,14 @@ tmux -L probe source-file ~/.tmux.conf
 tmux -L probe show-options -gv <option>   # 應回到 config 的值
 tmux -L probe kill-server
 ```
+
+**`source-file` 不展開路徑變數（3.8 實測）**：`source-file -q ~/x.conf` 與 `source-file -q '$HOME/x.conf'` 都回 **0、零錯誤，但什麼都沒載入**（另一支 server 查 `show-options -gv <opt>` 查不到）。只有「shell 已展開的絕對路徑」有效 → 主機專屬 overlay 的載入行必須包 `run-shell` 讓 shell 先展開：
+
+```tmux
+run-shell 'tmux source-file -q "$HOME/.tmux.local.conf"'
+```
+
+配套兩個已量測的性質：① `-q` **只吞「檔案不存在」**，overlay 內壞行仍 `rc=1` 且印 `invalid option`（不會靜默）；② `run-shell` 在 config 解析**之後**才執行 → overlay 能覆寫前面的 `set`，但**不能移除**已綁的鍵（`source-file` 只加不減）。
 
 ## 4. 按鍵傳遞（terminal → tmux → pane）
 
@@ -231,6 +240,7 @@ opencode     收到 0x0C → 命中內建 session_new    → 開普通新 sessio
 | 開新 session | `ctrl+l` | opencode（`cli.json` 的 `session.new`） |
 | 離開 opencode | `ctrl+q` | opencode（`cli.json` 的 `app.exit`；原含 `ctrl+c`／`ctrl+w`／`<leader>q`） |
 | opencode 重置（開新 session ＋ 重載） | `ctrl+shift+l` | 見 §4.1 |
+| opencode 重置（送不出 shift 的終端） | `ctrl+alt+l` | tmux（`tmux.conf` 的 `M-C-l`：焦點是 opencode 時灌同一串 CSI-u，否則送 `ESC` ＋ `0x0c`）。沒有 kitty 協議的終端（Crostini／vshd）裡 `ctrl+shift+l` 與 `ctrl+l` 同為 `0x0c`，故留這顆可辨識的替代入口；binding 以 `list-keys` 驗證已註冊，端到端按鍵未實測 |
 | opencode 服務重啟 | `ctrl+\`（跨終端）／`ctrl+shift+\``（本機順手） | 前者：`0x1c` legacy → tmux 直通 → opencode；後者：Ghostty 的 `text:\x1c` 改送**同一位元組**。兩者都收在 `cli.json` 的 `service.restart`；`ctrl+space`／`ctrl+\`` 不可用 |
 
 **三個關鍵取捨（否決的替代方案）**：
@@ -337,7 +347,7 @@ python3 ~/.cache/nvim/packer_hererocks/hererocks.py \
 **三個升級障礙**（都是「換環境才炸」型）：
 
 1. **`ueberzug` 在 Python 3.12 已死**（RuntimeError，專案停止維護）→ 改 `chafa`：ANSI 區塊、不需 tmux passthrough、且 `tmux capture-pane` 可客觀驗證輸出。
-2. **puppeteer 25 要求 Node ≥ 22.12** → nvm 升到 24 LTS（`nvm install 24.22.1 && nvm alias default 24.22.1`）。nvm 的全局套件是 per-version：切換前先 `npm ls -g --depth=0` 確認沒有要重裝的。
+2. **puppeteer 25 要求 Node ≥ 22.12** → 用 nvm 升到 26（`nvm install 26.1.0 && nvm alias default 26.1.0`；26.1.0 的 `process.release.lts` 未定義，屬 current 線）。nvm 的全局套件是 per-version：切換前先 `npm ls -g --depth=0` 確認沒有要重裝的。
 3. **Ubuntu 24.04 AppArmor 限制 unprivileged userns** → Chrome 起不來（`zygote_host_impl_linux.cc: No usable sandbox`）→ launch 加 `args: ['--no-sandbox']`。**只指向自家 dev server**：無沙箱渲染任意網頁等於開後門。
 
 **兩個實作陷阱**：

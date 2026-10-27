@@ -213,12 +213,14 @@ if [[ "$opt" =~ "-K -E" ]]; then
     cat <&0 > $fifo1 &
   fi
 
-  # tmux dropped the support for `-K`, `-R` to popup command
-  #   TODO: We can remove this once tmux 3.2 is released
-  if [[ ! "$(tmux popup --help 2>&1)" =~ '-R shell-command' ]]; then
-    opt="${opt/-K/}"
+  # tmux 3.2 起 popup 不再接受 `-R`（3.8 實測：`display-popup -R` → unknown flag -R）。
+  # 舊寫法用 `tmux popup --help` 探測，但 3.8 對 `--help` 直接回 "invalid flag --"、不印選項，
+  # 探測因此恆失敗（只是剛好落在正確分支），改用版本比較讓語意明確。
+  tmux_ver=$(tmux -V 2>/dev/null | grep -oE '[0-9]+\.[0-9]+' | head -n1 || true)
+  if [[ -n "$tmux_ver" ]] && [[ "$(printf '%s\n3.2\n' "$tmux_ver" | sort -V | head -n1)" == "3.2" ]]; then
+    opt="${opt/-K/}"      # tmux >= 3.2：popup 只吃 -E
   else
-    opt="${opt} -R"
+    opt="${opt} -R"       # tmux < 3.2：仍需要 -R
   fi
 
   tmux popup -d "$PWD" "${tmux_args[@]}" $opt "bash $argsf" > /dev/null 2>&1

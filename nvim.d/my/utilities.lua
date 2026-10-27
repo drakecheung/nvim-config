@@ -75,7 +75,7 @@ _G.ReloadConfig = function()
       package.loaded[name] = nil
     end
   end
-  dofile("/home/drake/.config/nvim/init.lua")
+  dofile(vim.fn.expand("$MYVIMRC"))
 end
 vim.cmd [[command! ReloadConfig lua ReloadConfig()]]
 

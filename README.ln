@@ -9,11 +9,20 @@ How to use this repo
   run ./install.sh
   read every files, modify and experiment
 
+  per-machine overrides (optional; kept OUT of this repo, so git stays clean)
+    tmux   : ~/.tmux.local.conf      (colours, default-shell, anything host-specific)
+    nvim   : ~/.config/nvim/local.lua (colorscheme, options)
+    ghostty: load line not set up yet (needs a machine with ghostty)
+    missing file = this repo's defaults are used, so a new device works as-is
+    check the boundary: bin/config-audit
+
 Key bindings
 
   tmux (prefix = Ctrl-b)
     Ctrl-o         = toggle opencode   (right pane, 60%)
     Ctrl-Shift-L   = opencode: new session + reload context   (opencode pane only)
+    Ctrl-Alt-L     = same as Ctrl-Shift-L, for terminals that cannot send shift
+    Ctrl-\ Ctrl-Shift-`  = opencode: restart service
     Ctrl-n         = toggle nvim       (left pane, 40%)
     Ctrl-/ Ctrl-_  = toggle db
     Ctrl-a         = toggle applogs
@@ -62,8 +71,8 @@ Environment
       http://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/
     sudo dpkg -i libssl1.1_*.deb && rm *.deb
 
-  nodejs 24 (LTS), eslint
-    nvm is the expected manager (nvm install 24.22.1 && nvm alias default 24.22.1)
+  nodejs 26, eslint
+    nvm is the expected manager (nvm install 26.1.0 && nvm alias default 26.1.0)
     puppeteer 25 requires node >= 22.12 — node 20 is not enough
     on a system without nvm:
       sudo apt remove nodejs libnode-dev libnode72

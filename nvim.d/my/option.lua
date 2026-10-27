@@ -4,9 +4,12 @@ local o = vim.opt
 o.backup = false
 o.writebackup = false
 o.swapfile = false
-o.directory = "/home/drake/.config/nvim/tmp"
+-- swap／undo 目錄不寫死主機路徑（各機 $HOME 不同）：由 nvim 的 state 目錄推導並確保存在。
+local state_tmp = vim.fn.stdpath("state") .. "/tmp"
+vim.fn.mkdir(state_tmp, "p")
+o.directory = state_tmp
 o.undofile = true
-o.undodir = "/home/drake/.config/nvim/tmp"
+o.undodir = state_tmp
 o.confirm = true
 
 o.ruler = true

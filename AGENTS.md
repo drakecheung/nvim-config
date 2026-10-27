@@ -37,12 +37,20 @@
 - **不用 `git add -A`／`git commit -a`**：明確指定路徑，並核對 `git diff --cached --name-only`（提交前）與 `git show --name-only HEAD`（提交後）。
 - **push 前取得用戶確認**。
 
+### 主機專屬設定的邊界
+
+- **repo 只放共享結構與可直接用的預設**：色盤、字型、字級、主機路徑等「依主機而異」的值走 overlay，不改 tracked 檔。
+- **overlay 在 repo 之外**（所以調偏好不會弄髒 git）：tmux `~/.tmux.local.conf`、nvim `~/.config/nvim/local.lua`；ghostty 的載入線尚未建立（本機無 ghostty 可實測 `config-file` 是否展開 `~`），在有該 binary 的機器上才補。
+- **載入線必須在檔尾**：tmux 是 `run-shell` 內 `source-file -q "$HOME/…"`（`source-file` 本身不展開 `~`／`$HOME`，見 `LESSONS.md` §3.3），nvim 是 `vimrc.lua` 末尾的 `dofile`。
+- **收工前跑 `bin/config-audit`**（唯讀）：外來絕對路徑、載入順序、overlay 能否載入、耦合值是否一致。
+- **配色是一組**：ghostty palette／tmux theme 色階／nvim colorscheme／fzf 色必須一起改；只改一處會得到「半套主題」且**不會報錯**。
+
 ### 環境假設
 
 - tmux **3.8**（source build，`/usr/local/bin/tmux`）；nvim **v0.12.6**（appimage）。
-- node **24.22.1**（nvm default；`puppeteer` 25 要求 ≥ 22.12）。
-- shell `/usr/bin/zsh`；terminal **ghostty**。
-- `~/.tmux.conf`、`~/.config/ghostty/config.ghostty` 等皆為指向本 repo 的 **symlink**。
+- node **26.1.0**（nvm default；`process.release.lts` 未定義 → 非 LTS 線；`puppeteer` 25 要求 ≥ 22.12）。
+- shell `/usr/bin/zsh`。
+- **本機是 Crostini 容器**（ChromeOS 的 LXC；hostname `penguin`、Debian 12 bookworm、`systemd-detect-virt` = `lxc`）：`~/.tmux.conf` 與 `~/.config/nvim/*` 已 symlink 進本 repo；**`ghostty` 未安裝、`~/.config/ghostty/` 不存在**，故 `ghostty.conf` 在本機不生效。
 - 任何探針一律用**拋棄式 server**（`tmux -L <name>`），不要污染現行 server。
 - popup 外觀的可覆寫通道：`FZF_PTR`（pointer，預設 `🢖`）、`FZF_SELBG`（highlight 底，預設 `#1f1a1a`）。
 

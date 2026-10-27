@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+# config-audit — 唯讀檢查「repo 共享 / 主機專屬」的界線是否還守著（不改任何檔案）。
+#
+# 檢查四項：
+#   1 無主機專屬絕對路徑：設定與腳本內不得出現別台機器的 /home/<user>/…
+#   2 overlay 載入行必須在檔尾：tmux 的 run-shell、nvim 的 dofile 都在解析後才跑，順序決定誰贏
+#   3 overlay 若存在，必須載得起來：tmux 用拋棄式 server、nvim 用 headless 啟動實測
+#   4 跨檔耦合值一致：tmux popup 底色 ↔ bin/open-project 的 fzf 底色（拆散會「半套主題」且不報錯）
+#
+# 用法：bin/config-audit        # 全部結果
+#       bin/config-audit -q     # 只印失敗項
+
+set -uo pipefail
+cd "$(dirname "$(readlink -f "$0")")/.." || exit 1
+
+QUIET=0
+[ "${1:-}" = "-q" ] && QUIET=1
+
+fail=0
+ok() { [ "$QUIET" -eq 0 ] && echo "  [ok]   $*"; return 0; }
+bad() { echo "  [FAIL] $*"; fail=1; }
+warn() { echo "  [warn] $*"; }
+
+CONFIG_FILES="tmux.conf ghostty.conf kitty.conf vimrc.lua install.sh"
+CONFIG_DIRS="nvim.d bin"
+
+echo "config-audit: $(pwd)"
+echo ""
+
+# ---- 1 主機專屬絕對路徑 ------------------------------------------------------
+hits=$(
+  for f in $CONFIG_FILES; do
+    [ -f "$f" ] && grep -nE '/home/[a-z0-9_.-]+/' "$f"
+  done
+  grep -rnE '/home/[a-z0-9_.-]+/' $CONFIG_DIRS 2>/dev/null
+) || true
+# 只檢查「生效中的」行：整行註解（# / -- / "）不算設定值，不影響行為。
+foreign=$(printf '%s\n' "$hits" | grep -vE '^[^:]+:[0-9]+:[[:space:]]*(#|--|")' | grep -v "/home/${USER}/" | grep -v '^$' || true)
+if [ -z "$foreign" ]; then
+  ok "1 無外來絕對路徑（只允許 /home/${USER}/…）"
+else
+  bad "1 出現非本機使用者的絕對路徑（換 device 必壞）："
+  printf '%s\n' "$foreign" | sed 's/^/         /'
+fi
+
+# ---- 2 overlay 載入行在檔尾 --------------------------------------------------
+tm_last=$(grep -nvE '^[[:space:]]*(#|$)' tmux.conf | tail -1 | cut -d: -f1)
+tm_ov=$(grep -n 'tmux.local.conf' tmux.conf | tail -1 | cut -d: -f1)
+if [ -n "${tm_ov:-}" ] && [ "$tm_last" = "$tm_ov" ]; then
+  ok "2a tmux.conf 的 overlay 載入行在最後（第 $tm_ov 行）"
+else
+  bad "2a tmux.conf 的 overlay 載入行不在檔尾（overlay=$tm_ov, 最後一行=$tm_last）"
+fi
+
+nv_ov=$(grep -n 'local.lua' vimrc.lua | tail -1 | cut -d: -f1)
+nv_req=$(grep -nE '^require ' vimrc.lua | tail -1 | cut -d: -f1)
+nv_tail=$(grep -vE '^[[:space:]]*$' vimrc.lua | tail -1 | tr -d '[:space:]')
+if [ -n "${nv_ov:-}" ] && [ "${nv_ov:-0}" -gt "${nv_req:-0}" ] && [ "$nv_tail" = "end" ]; then
+  ok "2b vimrc.lua 的 overlay 在最後一個 require 之後（第 $nv_ov 行）"
+else
+  bad "2b vimrc.lua 的 overlay 順序不對（overlay=$nv_ov, 最後 require=$nv_req, 末行=$nv_tail）"
+fi
+
+# ---- 3 overlay 載得起來 ------------------------------------------------------
+TM_OV_FILE="$HOME/.tmux.local.conf"
+if [ -f "$TM_OV_FILE" ]; then
+  tmux -L nvc_audit -f /dev/null new-session -d 2>/dev/null
+  tm_out=$(tmux -L nvc_audit source-file "$TM_OV_FILE" 2>&1)
+  tm_rc=$?
+  tmux -L nvc_audit kill-server 2>/dev/null
+  if [ "$tm_rc" -eq 0 ]; then
+    ok "3a $TM_OV_FILE 載入零錯誤"
+  else
+    bad "3a $TM_OV_FILE 載入失敗：$tm_out"
+  fi
+else
+  ok "3a 無 $TM_OV_FILE（略過，屬正常：沒有主機專屬覆寫）"
+fi
+
+NV_OV_FILE="$HOME/.config/nvim/local.lua"
+if [ -f "$NV_OV_FILE" ]; then
+  nv_out=$(nvim --headless -c 'qa!' 2>&1)
+  if printf '%s' "$nv_out" | grep -qiE 'error|E[0-9]+:'; then
+    bad "3b $NV_OV_FILE 啟動時報錯：$(printf '%s' "$nv_out" | head -3 | tr '\n' ' ')"
+  else
+    ok "3b $NV_OV_FILE 隨啟動載入且無錯誤"
+  fi
+else
+  ok "3b 無 $NV_OV_FILE（略過，屬正常）"
+fi
+
+# ---- 4 跨檔耦合值 ------------------------------------------------------------
+popup_bg=$(grep -oE "popup-style 'bg=#[0-9a-fA-F]{6}" tmux.conf | grep -oE '#[0-9a-fA-F]{6}' | head -1)
+fzf_bg=$(grep -oE 'bg:#[0-9a-fA-F]{6}' bin/open-project | head -1 | sed 's/^bg://')
+if [ -z "${popup_bg:-}" ] || [ -z "${fzf_bg:-}" ]; then
+  warn "4 取不到耦合值（popup=${popup_bg:-?} fzf=${fzf_bg:-?}）——規則可能已改，請更新本檢查"
+elif [ "${popup_bg,,}" = "${fzf_bg,,}" ]; then
+  ok "4 popup 底色 = fzf 底色（$popup_bg）"
+else
+  bad "4 popup 底色 $popup_bg ≠ bin/open-project 的 fzf bg $fzf_bg"
+fi
+
+echo ""
+if [ "$fail" -eq 0 ]; then
+  echo "config-audit: 全部通過"
+else
+  echo "config-audit: 有項目未通過（見上列 [FAIL]）"
+fi
+exit "$fail"

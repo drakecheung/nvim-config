@@ -85,7 +85,10 @@
 | `vimrc.lua` | nvim 入口（含 deprecated API alias） |
 | `nvim.d/**` | nvim 設定（keymap、autocmd、plugin、LSP、telescope…） |
 | `bin/**` | 膠水腳本（pane toggle、project picker、fzf popup 包裝…） |
+| `bin/config-audit` | 唯讀稽核共享／主機專屬的界線（外來絕對路徑、overlay 載入順序與可載入性、耦合值） |
 | `README.ln` | 使用者向說明（鍵位表、環境安裝步驟） |
+
+> **主機專屬覆寫不在 repo 內**：`~/.tmux.local.conf`、`~/.config/nvim/local.lua`（ghostty 的載入線待有該 binary 的機器補）。repo 的設定檔在**檔尾**條件載入它們，缺席即用 repo 的預設 —— 所以新機不帶 overlay 也能運作，調偏好也不會弄髒 git。
 
 ### Delta（不共享）
 

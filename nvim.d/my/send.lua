@@ -9,6 +9,31 @@ M.run_shell = function(cmd)
   return output
 end
 
+-- 系統剪貼簿：依主機實際可用的工具挑一個（本機實測 executable("xclip") == 0，
+-- 舊寫法直接 io.popen("xclip …") 會靜默失敗）。全都沒有時退回 nvim 的 + register 並提示一次。
+local clipboard_cmds = { "wl-copy", "xclip -selection clipboard", "xsel --clipboard --input", "pbcopy" }
+local clipboard_warned = false
+M.copy_to_clipboard = function(text)
+  for _, cmd in ipairs(clipboard_cmds) do
+    local bin = cmd:match("^(%S+)")
+    if vim.fn.executable(bin) == 1 then
+      local handle = io.popen(cmd, "w")
+      if handle then
+        handle:write(text)
+        handle:close()
+        return true
+      end
+    end
+  end
+  vim.fn.setreg("+", text)
+  vim.fn.setreg('"', text)
+  if not clipboard_warned then
+    clipboard_warned = true
+    vim.notify("找不到系統剪貼簿工具（wl-copy／xclip／xsel／pbcopy），已寫入 nvim 的 register", vim.log.levels.WARN)
+  end
+  return false
+end
+
 M.send_line_to_pane = function(text, pane)
   if pane == "" then
     vim.notify("Target pane not found", "error")
@@ -83,9 +108,7 @@ end
 M.yank_highlighted_lines = function()
   vim.cmd([[normal "ay]])
   local lines = vim.fn.getreg("a")
-  local cb = io.popen("xclip -selection clipboard", "w")
-  cb:write(lines)
-  cb:close()
+  M.copy_to_clipboard(lines)
 end
 
 M.search_cell_edge = function(flag)
@@ -113,9 +136,7 @@ end
 
 M.yank_current_cell = function()
   local lines = M.get_current_cell()
-  local cb = io.popen("xclip -selection clipboard", "w")
-  cb:write(lines)
-  cb:close()
+  M.copy_to_clipboard(lines)
 end
 
 -- send a cell like jupyter, cell is separated by empty lines
