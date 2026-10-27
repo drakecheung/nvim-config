@@ -242,7 +242,7 @@ opencode     收到 0x0C → 命中內建 session_new    → 開普通新 sessio
 | 離開 opencode | `ctrl+q` | opencode（`cli.json` 的 `app.exit`；原含 `ctrl+c`／`ctrl+w`／`<leader>q`） |
 | opencode 重置（開新 session ＋ 重載） | `ctrl+shift+l` | 見 §4.1 |
 | opencode 重置（送不出 shift 的終端） | `ctrl+alt+l` | tmux（`tmux.conf` 的 `M-C-l`：焦點是 opencode 時灌同一串 CSI-u，否則送 `ESC` ＋ `0x0c`）。沒有 kitty 協議的終端（Crostini／vshd）裡 `ctrl+shift+l` 與 `ctrl+l` 同為 `0x0c`，故留這顆可辨識的替代入口；binding 以 `list-keys` 驗證已註冊，端到端按鍵未實測 |
-| opencode 服務重啟 | `ctrl+\`（跨終端）／`ctrl+shift+\``（本機順手） | 前者：`0x1c` legacy → tmux 直通 → opencode（2026-10-27 於本機與 Crostini 皆實測有效）；後者：Ghostty 的 `text:\x1c` 改送**同一位元組**（Crostini 無 Ghostty → 不可用）。兩者都收在 `cli.json` 的 `service.restart`；`ctrl+space`／`ctrl+\`` 不可用 |
+| opencode 服務重啟 | `ctrl+\`（跨終端）／`ctrl+shift+\``（本機順手） | 前者：`0x1c` legacy → tmux 直通 → opencode（2026-10-27 於本機與 Crostini 皆實測有效）；後者：Ghostty 的 `text:\x1c` 改送**同一位元組**（需 Ghostty；Crostini 等無此 binary 的機器不可用）。兩者都收在 `cli.json` 的 `service.restart`；`ctrl+space`／`ctrl+\`` 不可用 |
 
 **三個關鍵取捨（否決的替代方案）**：
 
@@ -270,6 +270,10 @@ opencode     收到 0x0C → 命中內建 session_new    → 開普通新 sessio
   故 symlink 必須沿用該檔名。
 
 **驗證**：`ghostty +list-keybinds`（確認覆寫生效、symlink 被跟隨）。
+
+**overlay 載入線的兩個實測性質**（Ghostty 1.3.1，2026-10-27）：`config-file = ~/…` **會展開 `~`**；
+但**指向不存在的檔案時靜默略過**（`rc=0`、零輸出）——所以「沒報錯」不代表 overlay 載入了，
+判準只有 `ghostty +list-keybinds` 出現該 overlay 的鍵。
 
 ## 5. 腳本與 UI
 
@@ -348,7 +352,7 @@ python3 ~/.cache/nvim/packer_hererocks/hererocks.py \
 **三個升級障礙**（都是「換環境才炸」型）：
 
 1. **`ueberzug` 在 Python 3.12 已死**（RuntimeError，專案停止維護）→ 改 `chafa`：ANSI 區塊、不需 tmux passthrough、且 `tmux capture-pane` 可客觀驗證輸出。
-2. **puppeteer 25 要求 Node ≥ 22.12** → 用 nvm 升到 26（`nvm install 26.1.0 && nvm alias default 26.1.0`；26.1.0 的 `process.release.lts` 未定義，屬 current 線）。nvm 的全局套件是 per-version：切換前先 `npm ls -g --depth=0` 確認沒有要重裝的。
+2. **puppeteer 25 要求 Node ≥ 22.12** → 用 nvm 安裝一條滿足門檻的線（本機現值 `node -v` = v24.22.1，LTS `Krypton`；另有 20.20.2／24.16.0）。nvm 的全局套件是 per-version：切換前先 `npm ls -g --depth=0` 確認沒有要重裝的。
 3. **Ubuntu 24.04 AppArmor 限制 unprivileged userns** → Chrome 起不來（`zygote_host_impl_linux.cc: No usable sandbox`）→ launch 加 `args: ['--no-sandbox']`。**只指向自家 dev server**：無沙箱渲染任意網頁等於開後門。
 
 **兩個實作陷阱**：

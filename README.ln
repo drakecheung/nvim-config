@@ -12,7 +12,7 @@ How to use this repo
   per-machine overrides (optional; kept OUT of this repo, so git stays clean)
     tmux   : ~/.tmux.local.conf      (colours, default-shell, anything host-specific)
     nvim   : ~/.config/nvim/local.lua (colorscheme, options)
-    ghostty: load line not set up yet (needs a machine with ghostty)
+    ghostty: load line not set up yet (measured on 1.3.1: config-file expands ~, and a missing file is skipped silently)
     missing file = this repo's defaults are used, so a new device works as-is
     check the boundary: bin/config-audit
 
@@ -71,8 +71,8 @@ Environment
       http://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/
     sudo dpkg -i libssl1.1_*.deb && rm *.deb
 
-  nodejs 26, eslint
-    nvm is the expected manager (nvm install 26.1.0 && nvm alias default 26.1.0)
+  nodejs 24 (>= 22.12 for puppeteer), eslint
+    nvm is the expected manager (install any line >= 22.12; this machine: v24.22.1)
     puppeteer 25 requires node >= 22.12 — node 20 is not enough
     on a system without nvm:
       sudo apt remove nodejs libnode-dev libnode72

@@ -86,9 +86,10 @@
 | `nvim.d/**` | nvim 設定（keymap、autocmd、plugin、LSP、telescope…） |
 | `bin/**` | 膠水腳本（pane toggle、project picker、fzf popup 包裝…） |
 | `bin/config-audit` | 唯讀稽核共享／主機專屬的界線（外來絕對路徑、overlay 載入順序與可載入性、耦合值） |
+| `bin/deps-audit` | 唯讀稽核外部相依（plugin 版本落後、config `require` 的模組解析、npm 漂移） |
 | `README.ln` | 使用者向說明（鍵位表、環境安裝步驟） |
 
-> **主機專屬覆寫不在 repo 內**：`~/.tmux.local.conf`、`~/.config/nvim/local.lua`（ghostty 的載入線待有該 binary 的機器補）。repo 的設定檔在**檔尾**條件載入它們，缺席即用 repo 的預設 —— 所以新機不帶 overlay 也能運作，調偏好也不會弄髒 git。
+> **主機專屬覆寫不在 repo 內**：`~/.tmux.local.conf`、`~/.config/nvim/local.lua`（ghostty 的載入線尚未建立；`config-file` 的語意已實測，見 `AGENTS.md` §主機專屬設定的邊界）。repo 的設定檔在**檔尾**條件載入它們，缺席即用 repo 的預設 —— 所以新機不帶 overlay 也能運作，調偏好也不會弄髒 git。
 
 ### Delta（不共享）
 
