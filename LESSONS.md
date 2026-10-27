@@ -226,24 +226,30 @@ opencode     收到 0x0C → 命中內建 session_new    → 開普通新 sessio
 | 動作 | 鍵 | 由哪一層持有（檔案） |
 |---|---|---|
 | Ghostty 自己的 tab 切換 | `ctrl+shift+←/→` | Ghostty（`ghostty.conf` 的 `next_tab`／`previous_tab`，**明確寫出**不靠預設） |
-| opencode session tab 切換 | `ctrl+tab`／`ctrl+shift+tab` | Ghostty 編碼 → tmux 直通 → opencode 預設 `Alt+Down/Up`（`ghostty.conf` 的 `csi:1;3B`／`csi:1;3A`） |
+| opencode session tab 切換 | `alt+↑`／`alt+↓`（內建）＋ `alt+←`／`alt+→`（追加） | opencode（`cli.json` 的 `session.tab.previous`／`next`；終端與 tmux 都直通，不需任何改寫） |
 | opencode agent 循環 | `tab`／`shift+tab` | opencode（`cli.json` 的 `agent.cycle`；還原 V1 手感） |
 | 開新 session | `ctrl+l` | opencode（`cli.json` 的 `session.new`） |
 | 離開 opencode | `ctrl+q` | opencode（`cli.json` 的 `app.exit`；原含 `ctrl+c`／`ctrl+w`／`<leader>q`） |
 | opencode 重置（開新 session ＋ 重載） | `ctrl+shift+l` | 見 §4.1 |
-| opencode 服務重啟 | `ctrl+space` ＋ `ctrl+\``（兩個鍵名都綁） | opencode（`cli.json` 的 `service.restart`） |
+| opencode 服務重啟 | `ctrl+\`（跨終端）／`ctrl+shift+\``（本機順手） | 前者：`0x1c` legacy → tmux 直通 → opencode；後者：Ghostty 的 `text:\x1c` 改送**同一位元組**。兩者都收在 `cli.json` 的 `service.restart`；`ctrl+space`／`ctrl+\`` 不可用 |
 
 **三個關鍵取捨（否決的替代方案）**：
 
-1. **為何把 `ctrl+tab` 給 opencode session tab、`ctrl+shift+←/→` 給 Ghostty**（2026-10-12 交換）：
-   原案相反（`ctrl+tab` 給 Ghostty）。改成現案的理由＝ Tab 系列更符合「切 tab」的直覺，且
-   `ctrl+tab`／`ctrl+shift+tab` 與 `ctrl+shift+←/→` **同屬 Ghostty 能明確區分的類型**；
-   底層路徑（Ghostty `csi:` → tmux 直通 → `Alt+Down/Up` → opencode session tab）
-   在原案已實測可通 ⇒ 交換只重新指派觸發鍵，無新增風險。
+1. **為何把 `ctrl+tab` 交還 Ghostty、opencode 改用 `alt+方向鍵`**（2026-10-27，取代 2026-10-12 的交換）：
+   舊案把 `ctrl+tab` 改寫成 `Alt+Down/Up` 送給 opencode，代價是**吃掉 Ghostty 自己的 `next_tab`**。
+   現案反過來：終端不再改寫任何鍵，opencode 用它內建就有的 `alt+↑`／`alt+↓`，並在 `cli.json`
+   追加 `alt+←`／`alt+→`。這四個鍵在 Ghostty 與 tmux **都沒有**預設綁定（已實測），
+   所以「一個動作只由一層持有」仍然成立，而且少了一層轉譯。
+   代價：`alt+←`／`alt+→` 原本是輸入框的「按詞移動」，改由 `ctrl+←`／`ctrl+→` 與 `alt+b`／`alt+f` 擔當。
 2. **為何選方向鍵而非字母鍵**：`Ctrl+Shift+字母` 可能與 `Ctrl+字母` **同編碼**
    （例：`ctrl+shift+l` 長期無法確認可用），而 Ghostty 天生能區分「修飾鍵 ＋ 方向鍵」。
-3. **為何 `service.restart` 要綁兩個名字**：tmux 會把收到的擴展鍵**降級（re-encode）**後才寫入 pane，
-   pane 內程式看到的是 `ctrl+space` 而非反引號；裸終端（不經 tmux）才會送真正的反引號 ⇒ **兩個名字都綁可覆蓋兩種情境**。
+3. **為何 `service.restart` 由終端改送 `0x1c`**（2026-10-27 定案）：
+   反引號的 ctrl 位元組是 `0x00`（與 `ctrl+space` 同值），tmux 的 VT10x pane 收不到 shift 資訊，
+   所以 `ctrl+\`` 與 `ctrl+shift+\`` **都會**被命名為 `ctrl+space`；而 `ctrl+space` 在 Crostini
+   又被 host 層的輸入法切換吃掉，且與 `ctrl+@`／`ctrl+2` 等所有 NUL 來源碰撞 ⇒ 此路不通。
+   正解是：opencode 綁**實體 `ctrl+\`**（`0x1c`，legacy 直通），再讓終端把其他順手的 chord
+   改送**同一個位元組** —— `ctrl+shift+backquote=text:\x1c`（Zig string literal）。
+   這比「改寫成另一顆具名鍵」（曾試 `CSI 1;5H`＝Ctrl+Home）更穩：不必猜 app 端怎麼命名。
    位元組層細節與隔離測試法請參閱指標 → `mem:global/tmux/ctrl-tab-and-extended-keys`。
 
 **為何 Ghostty 設定檔納入本 repo**（2026-10-12）：
