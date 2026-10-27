@@ -242,7 +242,7 @@ opencode     收到 0x0C → 命中內建 session_new    → 開普通新 sessio
 | 離開 opencode | `ctrl+q` | opencode（`cli.json` 的 `app.exit`；原含 `ctrl+c`／`ctrl+w`／`<leader>q`） |
 | opencode 重置（開新 session ＋ 重載） | `ctrl+shift+l` | 見 §4.1 |
 | opencode 重置（送不出 shift 的終端） | `ctrl+alt+l` | tmux（`tmux.conf` 的 `M-C-l`：焦點是 opencode 時灌同一串 CSI-u，否則送 `ESC` ＋ `0x0c`）。沒有 kitty 協議的終端（Crostini／vshd）裡 `ctrl+shift+l` 與 `ctrl+l` 同為 `0x0c`，故留這顆可辨識的替代入口；binding 以 `list-keys` 驗證已註冊，端到端按鍵未實測 |
-| opencode 服務重啟 | `ctrl+\`（跨終端）／`ctrl+shift+\``（本機順手） | 前者：`0x1c` legacy → tmux 直通 → opencode；後者：Ghostty 的 `text:\x1c` 改送**同一位元組**。兩者都收在 `cli.json` 的 `service.restart`；`ctrl+space`／`ctrl+\`` 不可用 |
+| opencode 服務重啟 | `ctrl+\`（跨終端）／`ctrl+shift+\``（本機順手） | 前者：`0x1c` legacy → tmux 直通 → opencode（2026-10-27 於本機與 Crostini 皆實測有效）；後者：Ghostty 的 `text:\x1c` 改送**同一位元組**（Crostini 無 Ghostty → 不可用）。兩者都收在 `cli.json` 的 `service.restart`；`ctrl+space`／`ctrl+\`` 不可用 |
 
 **三個關鍵取捨（否決的替代方案）**：
 
