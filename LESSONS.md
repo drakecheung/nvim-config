@@ -461,3 +461,12 @@ tmux setenv -gu GHOSTTY_RESOURCES_DIR; tmux setenv -gu GHOSTTY_BIN_DIR   # 一�
 
 **⑦ 觀察到但未定位**：下載後**首次**直接執行 AppImage 曾卡住兩次（>60s、>120s，`+version` 與
 `+validate-config` 各一次）；之後連續多次皆 ~40ms 正常。腳本因此一律用 `timeout` 包住外部呼叫。
+
+**⑧ 圖示會被 `rsync --chmod=0644` 靜默弄壞**（2026-10-29 實際事故）：`--chmod` 沒分檔案／目錄時，
+目錄的 x 位會被拔掉 → `hicolor/` 變成 `drw-r--r--`，無法被 traverse，icon theme 查不到 →
+dock 顯示通用圖示，**沒有任何錯誤訊息**（`ls` 還看得到 png，`find` 也數得到 10 個）。
+判準：`find /usr/local/share/icons -type d ! -perm -u+x` 必須無輸出。正解是
+`rsync -rlptD --chown=root:root --chmod=D0755,F0644`。
+
+**⑨ 不要直接覆寫正在執行的 AppImage**：`install <src> <dest>` 會就地改寫同一個 inode，
+執行中的行程可能讀到半套內容。改成寫 `.new` 再 `mv`（rename 換目錄項，舊行程保留舊 inode）。

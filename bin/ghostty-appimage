@@ -100,13 +100,16 @@ do_install() {
   sudo install -d "$LIB_DIR" "$TERMINFO_DIR/x" \
     "$SHARE_DIR/applications" "$SHARE_DIR/dbus-1/services" \
     "$SHARE_DIR/systemd/user" "$SHARE_DIR/metainfo" "$SHARE_DIR/icons"
-  sudo install -m 0755 "$tmp/$name" "$ARTIFACT"
+  sudo install -m 0755 "$tmp/$name" "$ARTIFACT.new" \
+    && sudo mv -f "$ARTIFACT.new" "$ARTIFACT"   # rename, not rewrite: a running Ghostty keeps its inode
   sudo install -m 0644 "$root"/share/applications/*.desktop "$SHARE_DIR/applications/"
   sudo install -m 0644 "$root"/share/dbus-1/services/*.service "$SHARE_DIR/dbus-1/services/"
   sudo install -m 0644 "$root"/share/systemd/user/*.service "$SHARE_DIR/systemd/user/"
   sudo install -m 0644 "$root"/share/metainfo/*.xml "$SHARE_DIR/metainfo/"
   sudo install -m 0644 "$root"/share/terminfo/x/xterm-ghostty "$TERMINFO_DIR/x/xterm-ghostty"
-  sudo rsync -a --chmod=0644 "$root/share/icons/" "$SHARE_DIR/icons/"
+  # --chmod must be split by type: a bare "0644" also strips the x bit from directories,
+  # which leaves the theme upright but unreadable (the icon silently disappears).
+  sudo rsync -rlptD --chown=root:root --chmod=D0755,F0644 "$root/share/icons/" "$SHARE_DIR/icons/"
 
   # The AppImage runtime execs Ghostty as a *child*, so sd_notify(READY=1) comes from a
   # different PID than MainPID. The upstream unit is Type=notify-reload with the default
