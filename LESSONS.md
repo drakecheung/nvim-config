@@ -271,7 +271,7 @@ opencode     收到 0x0C → 命中內建 session_new    → 開普通新 sessio
 
 **驗證**：`ghostty +list-keybinds`（確認覆寫生效、symlink 被跟隨）。
 
-**overlay 載入線的兩個實測性質**（Ghostty 1.3.1，2026-10-27）：`config-file = ~/…` **會展開 `~`**；
+**overlay 載入線的兩個實測性質**（1.3.1 於 2026-10-27 首測，1.4.0 於 2026-10-29 複驗）：`config-file = ~/…` **會展開 `~`**；
 但**指向不存在的檔案時靜默略過**（`rc=0`、零輸出）——所以「沒報錯」不代表 overlay 載入了，
 判準只有 `ghostty +list-keybinds` 出現該 overlay 的鍵。
 
@@ -417,3 +417,47 @@ o.undodir = state_tmp
 
 **通用判準**：設定檔裡只要出現「絕對家目錄路徑」就是換機定時炸彈 —— 用 `$HOME`／`stdpath`／symlink 反推（後者見 §3.3 的 `@nvc_bin`）。`bin/config-audit` 的第 1 項會掃出來（**連本機使用者的路徑也算違規**，因為換 device 一樣壞）。
 
+
+## 6. Ghostty 版本升級：noble 的 GTK 門檻與 AppImage 路線
+
+**觸發**：想升級 Ghostty、`apt` 說已是最新、或終端打完升級指令後「服務 failed、所有視窗消失」。
+
+**① 1.4+ 在 noble 上不可能用 apt**（2026-10-29 量測）：Ghostty 1.4 把 GTK 下限拉到 **4.18 / libadwaita 1.7**，
+本機 noble 是 **4.14.5 / 1.5.0**；`ghostty.org/docs/linux` 明文寫「Ubuntu 24.04 LTS 不符」。
+mkasberg PPA 對 noble 停在 `1.3.1~ppa2`，snap stable 也是 1.3.1 → 等再久都不會有。
+（附帶事實：Ubuntu 26.04 官方 repo 的 ghostty 是 **1.3.0**，換 OS 不會換到 1.4。）
+→ 解法是**自帶 GTK 的 AppImage**（實測 runtime GTK 4.24.1 / Adwaita 1.10.0），由 `bin/ghostty-appimage` 管理。
+
+**② AppImage 與 `Type=notify-reload` 相衝（會讓整個終端消失）**：AppImage runtime 會 fork，
+`sd_notify(READY=1)` 來自**子行程**，systemd 以 `NotifyAccess=main` 拒收：
+
+```
+Got notification message from PID 344033, but reception only permitted for main PID 344029
+```
+
+症狀是啟動卡 90 秒後 `Result: timeout`、`Failed to start`，而畫面上的視窗同時被帶走。
+處置：在 `app-com.mitchellh.ghostty.service.d/` 放 `[Service]` `NotifyAccess=all`（腳本已自動安裝）。
+
+**③ terminfo 必須存在，而且不能放 `/usr/local`**：Ghostty 對子行程設 `TERM=xterm-ghostty`，
+但 `infocmp -D` 顯示 ncurses 只搜 `/usr/share/terminfo`、`/etc/terminfo`（外加 `~/.terminfo`）。
+移除 deb 後 `/usr/share` 那份會消失 → 放 `/etc/terminfo/x/xterm-ghostty`。
+（兩者內容實測**功能相同**，diff 只差註解路徑；拷貝是為了「檔案存在」，不是為了新能力。）
+
+**④ 優先序是自動的，不要改任何打包檔**：AppImage 內附的 desktop entry／dbus service／systemd unit
+全部用**裸 `ghostty`**（靠 PATH 解析），裝到 `/usr/local` 後 `/usr/local/bin`、`/usr/local/share`、
+`/usr/local/share/systemd/user` 都排在 `/usr` 前面（`systemctl --user cat` 可驗）。
+
+**⑤ tmux server 會殘留舊版環境變數**：舊版 Ghostty 設給子行程的 `GHOSTTY_RESOURCES_DIR`／`GHOSTTY_BIN_DIR`
+留在 tmux 全域環境裡 → 新版啟動時會讀到**舊路徑**（日誌：`found Ghostty resources dir: /usr/share/ghostty`），
+deb 移除後更是指向不存在的目錄。換版後清掉：
+
+```bash
+tmux setenv -gu GHOSTTY_RESOURCES_DIR; tmux setenv -gu GHOSTTY_BIN_DIR   # 一次一個，串在同一行會被當成 name=value
+```
+
+**⑥ 驗證三步**（缺一就會「看起來升級了」其實沒有）：
+`ghostty +version`、`systemctl --user show app-com.mitchellh.ghostty.service -p MainPID` 對
+`pgrep -af ghostty.AppImage`、`TERM=xterm-ghostty infocmp >/dev/null`。
+
+**⑦ 觀察到但未定位**：下載後**首次**直接執行 AppImage 曾卡住兩次（>60s、>120s，`+version` 與
+`+validate-config` 各一次）；之後連續多次皆 ~40ms 正常。腳本因此一律用 `timeout` 包住外部呼叫。

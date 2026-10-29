@@ -1,0 +1,180 @@
+#!/usr/bin/env bash
+#
+# ghostty-appimage — install or update Ghostty from the community AppImage.
+#
+# Why this exists: Ghostty 1.4 raised its GTK floor to 4.18 / libadwaita 1.7. Ubuntu 24.04
+# ships 4.14 / 1.5 and the mkasberg PPA stops at 1.3.1 for noble, so apt cannot deliver 1.4
+# on this host at all. The AppImage bundles its own GTK and its own packaging files.
+#
+# Those packaging files already reference a bare `ghostty` (no absolute path), so installing
+# them under /usr/local is enough to win by precedence — PATH (/usr/local/bin) for the
+# binary, XDG_DATA_DIRS (/usr/local/share) for the desktop entry and the D-Bus service,
+# and the systemd user unit search path (/usr/local/share/systemd/user). Nothing is rewritten.
+#
+#   /usr/local/libexec/ghostty/ghostty.AppImage     the pinned artifact
+#   /usr/local/bin/ghostty                          wrapper, execs the artifact
+#   /usr/local/share/{applications,dbus-1,icons,metainfo,systemd}
+#   /usr/local/share/systemd/user/app-com.mitchellh.ghostty.service.d/appimage.conf
+#                                                   NotifyAccess=all, see the note in do_install
+#   /etc/terminfo/x/xterm-ghostty                   ncurses never looks in /usr/local/share
+#
+# Usage:
+#   ghostty-appimage                 install or update to the newest stable upstream release
+#   ghostty-appimage --check         print installed vs upstream version (read-only)
+#   ghostty-appimage --uninstall     remove everything this script installed
+#
+# Exit code: 0 = ok, 1 = failure.
+
+set -uo pipefail
+
+REPO="pkgforge-dev/ghostty-appimage"
+API="https://api.github.com/repos/$REPO/releases"
+BIN_DIR=/usr/local/bin
+LIB_DIR=/usr/local/libexec/ghostty
+SHARE_DIR=/usr/local/share
+TERMINFO_DIR=/etc/terminfo
+ARTIFACT="$LIB_DIR/ghostty.AppImage"
+
+# Ghostty CLI actions page their output through $PAGER when stdin looks interactive,
+# and `less` on a non-tty stdin blocks forever. Never inherit either.
+export PAGER=cat GHOSTTY_PAGER=cat
+
+case "$(uname -m)" in
+  x86_64|aarch64) ARCH="$(uname -m)" ;;
+  *) echo "unsupported arch: $(uname -m)" >&2; exit 1 ;;
+esac
+
+say() { printf '\n\033[1m== %s ==\033[0m\n' "$1"; }
+die() { echo "FAILED: $*" >&2; exit 1; }
+
+installed_version() {
+  [ -x "$ARTIFACT" ] || return 1
+  "$ARTIFACT" +version </dev/null 2>/dev/null | sed -n 's/^  - version: //p' | head -1
+}
+
+latest_version() {
+  curl -fsSL "$API?per_page=15" \
+    | jq -r '[.[] | select(.prerelease | not)][0].tag_name // empty' \
+    | sed 's/^v//'
+}
+
+do_check() {
+  local have latest
+  have="$(installed_version || echo none)"
+  latest="$(latest_version)"
+  printf 'installed : %s\n' "$have"
+  printf 'upstream  : %s\n' "${latest:-unknown}"
+  printf 'on PATH   : %s\n' "$(command -v ghostty || echo none)"
+  [ "$have" = "$latest" ] && return 0 || return 1
+}
+
+do_install() {
+  local ver="${1:-}"
+  [ -n "$ver" ] || ver="$(latest_version)"
+  [ -n "$ver" ] || die "could not resolve the upstream version"
+
+  local name="Ghostty-${ver}-${ARCH}.AppImage"
+  local url="https://github.com/$REPO/releases/download/v${ver}/${name}"
+  local tmp; tmp="$(mktemp -d)" || die "mktemp"
+  trap 'rm -rf "${tmp:-}"' EXIT
+
+  say "download $name"
+  curl -fsSL -o "$tmp/$name" "$url" || die "download $url"
+  curl -fsSL -o "$tmp/$name.zsync" "$url.zsync" || die "download $url.zsync"
+
+  local want have_sha
+  want="$(grep -a '^SHA-1:' "$tmp/$name.zsync" | awk '{print $2}')"
+  have_sha="$(sha1sum "$tmp/$name" | awk '{print $1}')"
+  [ -n "$want" ] || die "no SHA-1 in the zsync file"
+  [ "$want" = "$have_sha" ] || die "checksum mismatch (want $want, got $have_sha)"
+  echo "sha1 ok: $have_sha"
+
+  say "extract packaging files"
+  chmod +x "$tmp/$name"
+  ( cd "$tmp" && "./$name" --appimage-extract >/dev/null ) || die "appimage extract"
+  local root="$tmp/squashfs-root"
+  [ -f "$root/share/applications/com.mitchellh.ghostty.desktop" ] \
+    || die "unexpected AppImage layout: no desktop entry"
+
+  say "install under /usr/local"
+  sudo install -d "$LIB_DIR" "$TERMINFO_DIR/x" \
+    "$SHARE_DIR/applications" "$SHARE_DIR/dbus-1/services" \
+    "$SHARE_DIR/systemd/user" "$SHARE_DIR/metainfo" "$SHARE_DIR/icons"
+  sudo install -m 0755 "$tmp/$name" "$ARTIFACT"
+  sudo install -m 0644 "$root"/share/applications/*.desktop "$SHARE_DIR/applications/"
+  sudo install -m 0644 "$root"/share/dbus-1/services/*.service "$SHARE_DIR/dbus-1/services/"
+  sudo install -m 0644 "$root"/share/systemd/user/*.service "$SHARE_DIR/systemd/user/"
+  sudo install -m 0644 "$root"/share/metainfo/*.xml "$SHARE_DIR/metainfo/"
+  sudo install -m 0644 "$root"/share/terminfo/x/xterm-ghostty "$TERMINFO_DIR/x/xterm-ghostty"
+  sudo rsync -a --chmod=0644 "$root/share/icons/" "$SHARE_DIR/icons/"
+
+  # The AppImage runtime execs Ghostty as a *child*, so sd_notify(READY=1) comes from a
+  # different PID than MainPID. The upstream unit is Type=notify-reload with the default
+  # NotifyAccess=main, which drops that message and fails the start after a 90s timeout.
+  sudo install -d "$SHARE_DIR/systemd/user/app-com.mitchellh.ghostty.service.d"
+  printf '# AppImage runtime forks: sd_notify comes from the child, not MainPID.\n[Service]\nNotifyAccess=all\n' \
+    | sudo tee "$SHARE_DIR/systemd/user/app-com.mitchellh.ghostty.service.d/appimage.conf" >/dev/null
+
+  printf '#!/bin/sh\n# generated by nvim-config/bin/ghostty-appimage\nexec %s "$@"\n' "$ARTIFACT" \
+    | sudo tee "$BIN_DIR/ghostty" >/dev/null || die "write $BIN_DIR/ghostty"
+  sudo chmod 0755 "$BIN_DIR/ghostty"
+
+  sudo update-desktop-database "$SHARE_DIR/applications" >/dev/null 2>&1 || true
+  sudo gtk-update-icon-cache -f -t "$SHARE_DIR/icons/hicolor" >/dev/null 2>&1 || true
+  systemctl --user daemon-reload || true
+
+  say "verify"
+  installed_version
+  printf 'on PATH   : %s\n' "$(command -v ghostty || echo none)"
+  TERM=xterm-ghostty infocmp >/dev/null 2>&1 \
+    && echo "terminfo  : ok" || echo "terminfo  : MISSING"
+
+  if dpkg -s ghostty >/dev/null 2>&1; then
+    say "note: the apt package ghostty is still installed"
+    cat <<'EOF'
+/usr/local shadows it everywhere (PATH, XDG_DATA_DIRS, systemd user path), so the AppImage
+is what actually runs — the package is now dead weight. For a single owner:
+
+    sudo apt remove ghostty
+
+Rollback to the packaged build at any time:
+
+    sudo rm -rf /usr/local/libexec/ghostty /usr/local/bin/ghostty \
+                /usr/local/share/{applications/com.mitchellh.ghostty.desktop,dbus-1/services/com.mitchellh.ghostty.service,systemd/user/app-com.mitchellh.ghostty.service,systemd/user/app-com.mitchellh.ghostty.service.d} \
+                /usr/local/share/icons/hicolor/*/apps/com.mitchellh.ghostty.png \
+                /etc/terminfo/x/xterm-ghostty
+    sudo apt install ghostty
+EOF
+  fi
+
+  say "restart the running terminal to apply"
+  echo "  systemctl --user restart app-com.mitchellh.ghostty.service"
+  echo "  (a tmux server survives the restart; non-tmux shells do not)"
+}
+
+do_uninstall() {
+  say "remove files installed by this script"
+  sudo rm -f "$BIN_DIR/ghostty" "$ARTIFACT" \
+    "$SHARE_DIR/applications/com.mitchellh.ghostty.desktop" \
+    "$SHARE_DIR/dbus-1/services/com.mitchellh.ghostty.service" \
+    "$SHARE_DIR/systemd/user/app-com.mitchellh.ghostty.service" \
+    "$SHARE_DIR/systemd/user/app-com.mitchellh.ghostty.service.d/appimage.conf" \
+    "$SHARE_DIR/metainfo/com.mitchellh.ghostty.metainfo.xml" \
+    "$TERMINFO_DIR/x/xterm-ghostty"
+  sudo find "$SHARE_DIR/icons" -name 'com.mitchellh.ghostty.png' -delete 2>/dev/null || true
+  sudo rmdir "$SHARE_DIR/systemd/user/app-com.mitchellh.ghostty.service.d" 2>/dev/null || true
+  sudo rmdir "$LIB_DIR" 2>/dev/null || true
+  sudo rmdir "$SHARE_DIR/dbus-1/services" "$SHARE_DIR/dbus-1" 2>/dev/null || true
+  systemctl --user daemon-reload || true
+  say "restore the packaged build"
+  echo "  sudo apt install ghostty"
+}
+
+case "${1:-}" in
+  ""|--install) do_install "${2:-}" ;;
+  --check)      do_check ;;
+  --uninstall)  do_uninstall ;;
+  --version)    do_install "${2:?missing version}" ;;
+  -h|--help)    sed -n '2,26p' "$0" | sed 's/^# \{0,1\}//' ;;
+  *)            echo "unknown option: $1 (try --help)" >&2; exit 1 ;;
+esac
