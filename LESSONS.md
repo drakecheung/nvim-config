@@ -470,3 +470,20 @@ dock 顯示通用圖示，**沒有任何錯誤訊息**（`ls` 還看得到 png�
 
 **⑨ 不要直接覆寫正在執行的 AppImage**：`install <src> <dest>` 會就地改寫同一個 inode，
 執行中的行程可能讀到半套內容。改成寫 `.new` 再 `mv`（rename 換目錄項，舊行程保留舊 inode）。
+
+**⑩ 兩個 AppImage 環境副作用（只記錄，不處理）**：`AppRun.lib` 會把 `XDG_CACHE_HOME` 改寫成
+`~/.cache/AppImage-Cache`（因此各工具 cache 都在那裡，屬正常）；`AppRun.sh` 會把 `$APPDIR/bin`
+前置到 `PATH`（故終端內 `command -v ghostty` 指到 `/tmp/.mount_ghost*/bin/`，腳本內驗證請用絕對路徑）。
+
+## 7. tldr／tealdeer：apt 版抓不到頁庫
+
+**症狀**：`tldr --update` → `Could not decompress downloaded ZIP archive: invalid Zip archive: Could not find central directory end`。
+
+**根因**：noble 的 `tealdeer 1.6.1` 硬編碼 `https://tldr.sh/assets/tldr.zip`；該網址現在回 **HTML**（靜態資產搬家），
+而 GitHub release 的 `tldr.zip` 仍正常。這是 client 端的死連結，不是網路問題。
+
+**解法**：用 release 的 static musl binary（v1.9.1，`.sha256` 對帳後 `install` 到 `/usr/local/bin/tldr`），
+再 `tldr --update`（實測 1.9s、7394 頁）。apt 套件移除，維持單一 owner。
+
+**判準**：`tldr --show-paths` 的 cache 位置取決於 `XDG_CACHE_HOME`；在 Ghostty 開的 shell 內會是
+`~/.cache/AppImage-Cache/tealdeer`（見 §6 ⑩），屬正常。若該目錄被刪，`tldr` 會要求重跑 `--update`。
