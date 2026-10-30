@@ -115,9 +115,8 @@ Environment
     `tldr --update` fails with "invalid Zip archive". Use the release static binary:
       curl -fsSL -o /tmp/tldr https://github.com/tealdeer-rs/tealdeer/releases/latest/download/tealdeer-linux-x86_64-musl
       sudo install -m 0755 /tmp/tldr /usr/local/bin/tldr && tldr --update
-    shortcuts (append to ~/.zshrc, so `tell ls` / `tl ls` also work — "tldr" is awkward to type):
-      tell() { tldr "$@" }
-      alias tl='tldr'
+    shortcuts (append to ~/.zshrc — "tldr" is awkward to type; all three are plain aliases):
+      alias tell='tldr' about='tldr' tl='tldr'
 
   tmux
     download and extract latest tmux-xxx.tar.gz at https://github.com/tmux/tmux/releases
