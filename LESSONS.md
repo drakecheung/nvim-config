@@ -104,6 +104,16 @@ vim.api.nvim_create_autocmd("FileType", {           -- ③ 高亮 ＋ indent 自
 - 修法：**只留一個 store** —— 把 `<plugin>/parser/*.so` 併回 `site/parser/`（同名者保留較新的），再 `rmdir` 舊目錄；之後 `:TSUpdate` 也只會寫同一個地方。實測收斂後 312 個 parser、`highlights` 與 `indents` 失敗數皆為 0。
 - 收尾必驗：`ls <plugin>/parser | wc -l` 必須**連目錄都不存在**。2026-11-03 第一次整併後仍留 4 個檔（`c`／`cpp`／`html` 是 2025-09 舊版、`lua` 與新版位元組相同）—— 因為整併只搬「舊目錄獨有」的檔，**同名者原地不動**，於是「兩套 store」其實沒消滅。判準不能只看 `broken=0`。
 
+**驗證方法本身的三個假象（2026-11-03 實測，會產生假通過）**：
+
+- `nvim --headless -c 'lua …'` 把多行腳本塞進一行會被**截斷**：迴圈跑 0 次，卻照樣印出「0 失敗」。多步驟驗證要寫成檔案再 `-c 'luafile /tmp/x.lua'`。
+- `nvim --headless -l script.lua` **不載入使用者 config**（實測 `number`／`expandtab` 皆 `false`）→ filetype 偵測、`FileType` autocmd、treesitter 接線全部不生效。需要 config 的驗證一律用 `-c 'luafile …'`。
+- 強制 `set filetype=<lang>` 會製造**假陽性**：對 nvim 不會自動偵測的語言（`.glimmer`、`.re`）硬設 filetype，會踩到上游 Vim 的 `syntax/glimmer.vim: E121: Undefined variable: b:current_syntax`，或空 buffer parse 拋 `languagetree.lua: attempt to index field '_parent' (a nil value)`。實際檔案（`ft` 為空、沒有 parser 被觸發）並無這些症狀 → 不要為了這兩個語言去改設定。
+
+**`html_tags` 沒有 parser 是正常的**：它在 `parsers.lua` 只有 `readme_note = 'queries required by html, astro, vue, svelte'`、沒有 `install_info` —— 是純 query 套件（給 html／astro／vue／svelte `; inherits: html_tags` 用），本來就沒有 grammar。判準：`queries/<lang>/` 存在但 `site/parser/<lang>.so` 不存在 ≠ 壞掉。
+
+**`stdpath('data')/site/` 三個目錄各司其職**：`site/parser/` 放 grammar（nvim 從 `rtp/parser/<lang>.so` 載入；nvim-treesitter `main` 刻意編到這裡，與 plugin 解耦，plugin 更新不會弄掉 parser）；`site/parser-info/*.revision` 是 `:TSUpdate` 判斷「要不要重編」的版本記錄；`site/queries/<lang>` 若是指回 `<plugin>/runtime/queries/<lang>` 的 **symlink**，內容與 plugin 完全相同 → 冗餘、無漂移、可留。
+
 ### 2.4 packer 的兩個非互動陷阱
 
 **① `:PackerClean`／`:PackerSync` 的移除步驟會走 `vim.fn.confirm`** —— 非互動（headless、腳本）下拿不到回答就**直接跳過**：指令回報成功、輸出乾淨，但 plugin 目錄還在，`packer_compiled.lua` 也還引用它。
