@@ -21,12 +21,6 @@ if not status_ok then
   return
 end
 
-local ok2, packer_luarocks = pcall(require, "packer.luarocks")
-if not ok2 then
-  return
-end
-packer_luarocks.install_commands()
-
 -- Have packer use a popup window
 packer.init {
   display = {
@@ -49,19 +43,11 @@ packer.init {
 -- call SourceWhenExist("/home/drake/drake/env/vim-misc/plugin/extract-method.vim")
 
 -- Install your plugins here
-packer.startup(function(use, use_rocks)
-  -- NOTE: If auto-installation of rocks fails with "main function has more than 65536 constants":
-  -- This is a bug in LuaRocks 2.4.4 (Packer's default) handling large repositories.
-  -- FIX: Install manually from local source:
-  --   1. cd /tmp
-  --   2. Clone repos:
-  --      git clone https://github.com/openresty/lua-cjson
-  --      git clone https://github.com/hishamhm/f-strings
-  --   3. Install using packer's internal luarocks:
-  --      cd lua-cjson && ~/.cache/nvim/packer_hererocks/2.1.0-beta3/bin/luarocks make
-  --      cd ../f-strings && ~/.cache/nvim/packer_hererocks/2.1.0-beta3/bin/luarocks make
-  use_rocks 'lua-cjson'
-  use_rocks 'f-strings'
+packer.startup(function(use)
+  -- Rocks stay OFF: packer's hererocks cannot parse Neovim's rolling LuaJIT version
+  -- string, so every :PackerSync failed there (LESSONS.md §5.5). `lua-cjson` resolves
+  -- from the system path instead (nvim.d/telescope-external.lua) and nothing requires
+  -- `f-strings`; both were dropped deliberately, not lost.
 
   use "wbthomason/packer.nvim"          -- Have packer manage itself
   use "nvim-lua/popup.nvim"             -- An implementation of the Popup API from vim in Neovim

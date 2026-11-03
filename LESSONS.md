@@ -97,6 +97,13 @@ vim.api.nvim_create_autocmd("FileType", {           -- ③ 高亮 ＋ indent 自
 
 **javascript 例外**：不套 treesitter indent（原設定即如此：`indents.scm` 對 embedded SQL 失效），保留 Vim 的 `GetJavascriptIndent()`。
 
+**第三個陷阱：兩套 parser store 會互相覆蓋（2026-11-03 實測）**
+
+- 現場：`<plugin>/parser/*.so`（2025-09 建的）與 `stdpath('data')/site/parser/*.so`（`nvim-treesitter` main 的安裝位置）同時存在。舊 store 的 grammar 落後於 plugin 內建的 queries → 開檔時 `highlighter.lua` 拋 `Query error … Invalid node type "property"`（實際受害：`editorconfig`，同類共 36 個語言 ＋ 6 個 `indents.scm`）。
+- 判別法（可重複跑）：逐個 `*.so` 做 `vim.treesitter.language.add(lang)`，再 `pcall(vim.treesitter.query.get, lang, "highlights"/"indents")`；失敗的語言就是 grammar 與 query 漂移。
+- 修法：**只留一個 store** —— 把 `<plugin>/parser/*.so` 併回 `site/parser/`（同名者保留較新的），再 `rmdir` 舊目錄；之後 `:TSUpdate` 也只會寫同一個地方。實測收斂後 312 個 parser、`highlights` 與 `indents` 失敗數皆為 0。
+- 收尾必驗：`ls <plugin>/parser | wc -l` 必須**連目錄都不存在**。2026-11-03 第一次整併後仍留 4 個檔（`c`／`cpp`／`html` 是 2025-09 舊版、`lua` 與新版位元組相同）—— 因為整併只搬「舊目錄獨有」的檔，**同名者原地不動**，於是「兩套 store」其實沒消滅。判準不能只看 `broken=0`。
+
 ### 2.4 packer 的兩個非互動陷阱
 
 **① `:PackerClean`／`:PackerSync` 的移除步驟會走 `vim.fn.confirm`** —— 非互動（headless、腳本）下拿不到回答就**直接跳過**：指令回報成功、輸出乾淨，但 plugin 目錄還在，`packer_compiled.lua` 也還引用它。
@@ -332,18 +339,19 @@ tmux 端配合：`popup-border-lines none` + `popup-style bg=#114b52,fg=themewhi
 
 **實測（皆 1 格）**：`➤` U+27A4、`⮞` U+2B9E、`⮚` U+2B9A、`🢖` U+1F896、`🡆` U+1F846、`➜` U+279C 皆 EAW=N；`▶` U+25B6、`▌` U+258C 為 A（模糊），但 tmux 實測仍判 1 格。
 
-### 5.5 Hererocks／LuaRocks
+### 5.5 Hererocks／LuaRocks：整條鏈不需要，直接拆掉
 
-**錯誤**：`[packer.nvim] luarocks.lua:103: Failed to install hererocks`。**原因**：nvim 升級換 LuaJIT 版本後，版本字串不再被 hererocks 認得（`LuaJIT 2.1.1774638290` vs `-j 2.1.…`）。
+**症狀**：`:PackerSync` 每次都停在 `luarocks-hererocks` 任務（"cannot update"），nvim 本身正常。
 
-**修法**：手動安裝並**只 pin major.minor**：
-```bash
-rm -rf ~/.cache/nvim/packer_hererocks/<new-version>
-python3 ~/.cache/nvim/packer_hererocks/hererocks.py \
-  -j 2.1 -r latest ~/.cache/nvim/packer_hererocks/<new-version>
-```
+**根因（2026-11-03 實測）**：`hererocks.py -j 2.1.1774638290` → `Error: bad LuaJIT version 2.1.1774638290`。Neovim 的 LuaJIT 版本字串是帶 timestamp 的 rolling 版本，hererocks 只認官方版本（`2.1.0-beta3` 等）；AppImage 每次升級都可能換字串 → packer 每次 sync 都重試建 env，必然失敗。
 
-**先問 rocks 是否真的需要**：`lua-cjson` 自 nvim 0.6 起已被 `vim.json` 取代；`f-strings` 只是裝飾性、沒有 plugin 依賴它。檢查 `nvim.d/my/plugin.lua` 的 `use_rocks` —— 沒人需要就刪掉那些行，整條 hererocks 依賴鏈一起消失。
+**修法（已採用）：刪掉 `use_rocks`，不要去修 hererocks。**
+
+- `lua-cjson`：移除 rock 後，repo 內已無任何 `require "cjson"`（`telescope-external` 改走逐行輸出，不需要 JSON；剩下的是 `plugin.lua` 與 `telescope-external.lua` 註解裡的敘述性提及）；模組載入不受影響。
+- `f-strings`：整個 repo 沒有任何 `require`，屬裝飾性。
+- 移除 `packer.luarocks` 的 require 與兩行 `use_rocks` 之後，`plugin/packer_compiled.lua` 仍會留一段 `Luarocks path setup`（`packer/compile.lua` 無條件產生）—— 它只是 append 一條不存在的 `package.path`，無害，不要為了消掉它去改 plugin。
+
+**若哪天真的要 rock**：`hererocks.py -j 2.1 -r latest <dir>`（只 pin major.minor）；並注意 `stdpath('cache')` 由 `XDG_CACHE_HOME` 決定，本機是 `~/.cache/AppImage-Cache`（不是 `~/.cache/nvim`）。
 
 ### 5.6 `nvim-uid`：ueberzug 已死 → chafa；puppeteer 25 → Node ≥ 22.12
 
@@ -416,6 +424,13 @@ o.undodir = state_tmp
 ```
 
 **通用判準**：設定檔裡只要出現「絕對家目錄路徑」就是換機定時炸彈 —— 用 `$HOME`／`stdpath`／symlink 反推（後者見 §3.3 的 `@nvc_bin`）。`bin/config-audit` 的第 1 項會掃出來（**連本機使用者的路徑也算違規**，因為換 device 一樣壞）。
+
+
+### 5.9 專案選單已有 tmux `Ctrl+S`，不要在 nvim 內重做
+
+- **遇到**：想在 nvim 內做「列出所有 repo、選一個開」的 picker（例如把 `telescope-external` 接上 `bin/list-projects`）。
+- **事實**：`tmux.conf` 有 `bind-key -n C-s run "open-project"` —— fzf 彈窗，選中後**新開 tmux window 並切到該 repo**；它的資料來自 `bin/list-projects` 的 cache。
+- **行動**：要開專案就用 `Ctrl+S`。真的要在 nvim 內接清單，就接「沒有其他入口」的來源；不要把 `list-projects` 再接一次 —— 在 nvim 裡選中只會 `:e <目錄>`（看目錄，不會 cd、不開 window），語意比 `open-project` 弱。
 
 
 ## 6. Ghostty 版本升級：noble 的 GTK 門檻與 AppImage 路線
