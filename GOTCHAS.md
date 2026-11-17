@@ -1,4 +1,4 @@
-# LESSONS — nvim-config
+# GOTCHAS — nvim-config
 
 本 repo 的**專案級教訓**：踩過的坑，以及遇到它時該做什麼。
 

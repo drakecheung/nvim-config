@@ -6,7 +6,7 @@
 
 1. **本檔** —— agent 工作規則。
 2. **`SKELETON.md`** —— 方法論契約（通則：原則、檔案地圖、md 檢查步驟、同步儀式）。本檔引用它。
-3. **`LESSONS.md`** —— 本 repo 的專案級教訓（坑與其行動）。
+3. **`GOTCHAS.md`** —— 本 repo 的專案級教訓（坑與其行動）。
    動 `ghostty.conf`／`tmux.conf`／`vimrc.lua`／`nvim.d/**`／`bin/**` 之前，先讀對應節。
 4. **`opencode-config` 的 `memories/global/`** —— 跨專案通則（tmux 擴展鍵、design language、報告格式等）。本 repo 不重述。
 
@@ -16,10 +16,10 @@
 |---|---|
 | `SKELETON.md` | 方法論契約（原則／檔案地圖／同步儀式）；跨案**骨架**同版，本地增補以 `❗本 repo 增補` 標記 |
 | `AGENTS.md`（本檔）| agent 工作規則、協定、驗證方式（**引用 `SKELETON.md`**）|
-| `LESSONS.md` | 專案級坑與其行動（「遇到 X 就做 Y」）；**只由本檔引用** |
+| `GOTCHAS.md` | 專案級坑與其行動（「遇到 X 就做 Y」）；**只由本檔引用** |
 | `opencode-config` 的 `memories/global/` | 跨專案通則 |
 
-**不要把坑寫進本檔，也不要把規則寫進 `LESSONS.md`** —— 兩處各寫一份必然漂移。
+**不要把坑寫進本檔，也不要把規則寫進 `GOTCHAS.md`** —— 兩處各寫一份必然漂移。
 
 ## 規則
 
@@ -41,7 +41,7 @@
 
 - **repo 只放共享結構與可直接用的預設**：色盤、字型、字級、主機路徑等「依主機而異」的值走 overlay，不改 tracked 檔。
 - **overlay 在 repo 之外**（所以調偏好不會弄髒 git）：tmux `~/.tmux.local.conf`、nvim `~/.config/nvim/local.lua`；ghostty 的載入線尚未建立 —— `config-file` 已於本機實測（Ghostty **1.4.0**）：**會展開 `~`**，且**指向不存在的檔案時靜默略過**（`rc=0`、無訊息），故補線時要用 `ghostty +list-keybinds` 驗覆寫是否真的出現。
-- **載入線必須在檔尾**：tmux 是 `run-shell` 內 `source-file -q "$HOME/…"`（`source-file` 本身不展開 `~`／`$HOME`，見 `LESSONS.md` §3.3），nvim 是 `vimrc.lua` 末尾的 `dofile`。
+- **載入線必須在檔尾**：tmux 是 `run-shell` 內 `source-file -q "$HOME/…"`（`source-file` 本身不展開 `~`／`$HOME`，見 `GOTCHAS.md` §3.3），nvim 是 `vimrc.lua` 末尾的 `dofile`。
 - **收工前跑 `bin/config-audit`**（唯讀）：外來絕對路徑、載入順序、overlay 能否載入、耦合值是否一致。
 - **配色是一組**：ghostty palette／tmux theme 色階／nvim colorscheme／fzf 色必須一起改；只改一處會得到「半套主題」且**不會報錯**。
 
@@ -51,12 +51,12 @@
 - node 以 `node -v` 實測為準（本機 2026-10-27：**v24.22.1**，nvm 管理，`process.release.lts` = `Krypton`；nvm 內另有 20.20.2／24.16.0）；門檻是 `puppeteer` 25 要求 **≥ 22.12**，三者皆過。
 - shell `/usr/bin/zsh`（`tmux show-options -gv default-shell` 亦為此）。
 - **主機 `drake-achk`**（`systemd-detect-virt` = `none`，非容器）：`~/.tmux.conf`、`~/.config/nvim/*`、`~/.config/ghostty/config.ghostty` 皆 symlink 進本 repo。
-- **`ghostty` 已安裝並生效**（**1.4.0**，`/usr/local/bin/ghostty` → AppImage，由 `bin/ghostty-appimage` 管理）：apt 在 noble 上永遠到不了 1.4（GTK 4.18 門檻，見 `LESSONS.md` §6）。`ghostty +list-keybinds` 可見 repo 的覆寫（`ctrl+shift+l=csi:108;6u` 等）。
-- **換到 ChromeOS Crostini（無 `ghostty`）時**：`ctrl+shift+l` 收不到 shift（見 `LESSONS.md` §4.2）→ 用 `ctrl+alt+l`。
+- **`ghostty` 已安裝並生效**（**1.4.0**，`/usr/local/bin/ghostty` → AppImage，由 `bin/ghostty-appimage` 管理）：apt 在 noble 上永遠到不了 1.4（GTK 4.18 門檻，見 `GOTCHAS.md` §6）。`ghostty +list-keybinds` 可見 repo 的覆寫（`ctrl+shift+l=csi:108;6u` 等）。
+- **換到 ChromeOS Crostini（無 `ghostty`）時**：`ctrl+shift+l` 收不到 shift（見 `GOTCHAS.md` §4.2）→ 用 `ctrl+alt+l`。
 - 任何探針一律用**拋棄式 server**（`tmux -L <name>`），不要污染現行 server。
 - popup 外觀的可覆寫通道：`FZF_PTR`（pointer，預設 `🢖`）、`FZF_SELBG`（highlight 底，預設 `#1f1a1a`）。
 
 ### 禁忌
 
-- **不把坑寫進本檔**（坑屬 `LESSONS.md`）、**不把工作規則寫進 `LESSONS.md`**、**不把方法論寫進 `AGENTS.md`**（屬 `SKELETON.md`）。
+- **不把坑寫進本檔**（坑屬 `GOTCHAS.md`）、**不把工作規則寫進 `GOTCHAS.md`**、**不把方法論寫進 `AGENTS.md`**（屬 `SKELETON.md`）。
 - **不用推定代替量測**：沒量到的行為不寫進 md、不當結論交付。

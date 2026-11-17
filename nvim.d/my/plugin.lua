@@ -45,7 +45,7 @@ packer.init {
 -- Install your plugins here
 packer.startup(function(use)
   -- Rocks stay OFF: packer's hererocks cannot parse Neovim's rolling LuaJIT version
-  -- string, so every :PackerSync failed there (LESSONS.md §5.5). `lua-cjson` resolves
+  -- string, so every :PackerSync failed there (GOTCHAS.md §5.5). `lua-cjson` resolves
   -- from the system path instead (nvim.d/telescope-external.lua) and nothing requires
   -- `f-strings`; both were dropped deliberately, not lost.
 
