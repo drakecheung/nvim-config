@@ -34,11 +34,11 @@
 | `SKELETON.md` | 本檔：方法論契約（跨案**骨架**同版；本地增補標記 `❗本 repo 增補`） |
 | `AGENTS.md` | agent 工作規則（引用本檔） |
 | `GOTCHAS.md` | 本 repo 的專案級坑與其行動（「遇到 X 就做 Y」） |
-| `opencode-config` 的 `memories/global/` | 跨專案通則 |
+| `opencode-config` 的 `playbooks/`、`experience/`、`memories/global/design-system/` | 跨專案通則（守／攻／經歷／設計） |
 
 **引用關係（誰指向誰）**：
 
-- `AGENTS.md` → 引用 `SKELETON.md`（通則）＋ 指向 `GOTCHAS.md`（動手前先讀對應節）＋ 指向 `memories/global/`（跨專案通則）。
+- `AGENTS.md` → 引用 `SKELETON.md`（通則）＋ 指向 `GOTCHAS.md`（動手前先讀對應節）＋ 指向 `opencode-config` 的 `playbooks/` 與 `experience/`（跨專案通則）。
 - `GOTCHAS.md` → **只由 `AGENTS.md` 引用**；它自己不引用 `SKELETON.md`，避免雙向糾纏。
 - `SKELETON.md` → 不引用 `GOTCHAS.md` 內文（坑是 delta，不屬 invariant）。
 
@@ -107,7 +107,7 @@
 | 層級 | 住處 | sync 會覆蓋嗎 |
 |---|---|---|
 | **框架／跨案通用**（方法論、跨 stack 的紀律） | 本檔 §1／§2 | ✅ 會（本就共用） |
-| **工具級跨專案**（tmux 3.8、fzf、nvim 的行為變更） | `opencode-config` 的 `memories/global/` | ❌ 各自同步 |
+| **工具級跨專案**（tmux 3.8、fzf、nvim 的行為變更） | `opencode-config` 的 `playbooks/gotchas.md` | ❌ 各自同步 |
 | **本 repo 專屬**（本 repo 的設定值、腳本、pane 模型） | **`GOTCHAS.md`** | ❌ **不碰** |
 
 判準（**❗本 repo 增補**；家族藍本未有）：四問**全過**才算「通用」，可進上兩層；任一不過 → 留 `GOTCHAS.md`：

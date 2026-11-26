@@ -9,7 +9,7 @@
 - 改 `bin/**` 腳本，或接到「按了沒反應／顏色變怪／popup 一閃即關／pane 叫錯」的回報
 
 > **規則本體在 `AGENTS.md`**；本檔只放「坑與其行動」，不重述規則。
-> **跨專案通則不在這裡** —— 它們住 opencode-config 的 `memories/global/`（例：tmux 擴展鍵降級、design language、報告格式）。
+> **跨專案通則不在這裡** —— 它們住 opencode-config 的 `playbooks/gotchas.md`（跨案坑）與 `playbooks/shortcuts.md`（有前提的繞道；報告格式見其 `## reporting` 分節），設計理念住 `memories/global/design-system/`。
 
 ---
 
@@ -217,6 +217,8 @@ run-shell 'tmux source-file -q "$HOME/.tmux.local.conf"'
 
 ## 4. 按鍵傳遞（terminal → tmux → pane）
 
+> 本節只記本 repo 的實作值（設定行、位元組、腳本名）；跨案原理（四層與重編碼、二分定位）→ opencode-config 的 `playbooks/gotchas.md` 的 `## tmux`。
+
 ### 4.1 `Ctrl+Shift+L` → opencode reset-session
 
 **症狀**：在 opencode pane 按 `Ctrl+Shift+L`，得到**普通新 session**，不是 reset-session。
@@ -241,7 +243,7 @@ opencode     收到 0x0C → 命中內建 session_new    → 開普通新 sessio
 
 **殘留風險**：① 兩層耦合 —— 任一層被移除會**靜默**退回「開普通新 session」（兩個檔案都有註解註明）；② `send-keys -H` 的位元組是硬編碼 CSI-u，opencode 若改鍵位解析方式要跟著改。
 
-> 完整診斷順序與原理（含 `Ctrl+Tab` 的變體）→ opencode-config 的 `memories/global/tmux/ctrl-tab-and-extended-keys`。
+> 完整診斷順序與原理（含 `Ctrl+Tab` 的變體）→ opencode-config 的 `playbooks/gotchas.md` 的 `## tmux` 分節（「按鍵沒到：先分層定位，不要在 app 端猜」）。
 
 > `extended-keys-format` 預設**實測為 `xterm`**（`^[[27;6;108~`），不是 opencode 認得的 csi-u —— 用 `always` 還得額外改 format。
 
@@ -308,7 +310,7 @@ opencode     收到 0x0C → 命中內建 session_new    → 開普通新 sessio
 
 ### 5.2 pane 偵測用 marker，不用順序
 
-> 範圍：**只限 nvim → tmux 的 `console_ctl` 層**（marker `leftpane`）。鍵位 toggle 用的是另一套（`bin/tmux-panes.sh` 的 `left-<type>` ＋ `pane_left` 幾何）→ `memories/global/tmux/pane-toggle-unified-model`。
+> 範圍：**只限 nvim → tmux 的 `console_ctl` 層**（marker `leftpane`）。鍵位 toggle 用的是另一套（`bin/tmux-panes.sh` 的 `left-<type>` ＋ `pane_left` 幾何）→ opencode-config 的 `playbooks/gotchas.md` 的 `## tmux` 分節（「pane 繼承 tmux server 的環境；pane 分類不能用子字串」）。
 
 **別用位置挑 pane**：`tmux list-panes | grep -v active | head -n1` 在 ≥3 個 pane 時會抓錯。正解是 marker：`console_ctl` 開 pane 時注入 `echo leftpane > /dev/null`，之後用 `#{pane_start_command}` 比對。
 

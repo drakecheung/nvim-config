@@ -8,7 +8,7 @@
 2. **`SKELETON.md`** —— 方法論契約（通則：原則、檔案地圖、md 檢查步驟、同步儀式）。本檔引用它。
 3. **`GOTCHAS.md`** —— 本 repo 的專案級教訓（坑與其行動）。
    動 `ghostty.conf`／`tmux.conf`／`vimrc.lua`／`nvim.d/**`／`bin/**` 之前，先讀對應節。
-4. **`opencode-config` 的 `memories/global/`** —— 跨專案通則（tmux 擴展鍵、design language、報告格式等）。本 repo 不重述。
+4. **`opencode-config` 的 `playbooks/gotchas.md`（跨案坑）、`playbooks/shortcuts.md`（有前提的繞道）、`experience/`（實測經歷）、`memories/global/design-system/`（設計理念）** —— 跨專案通則（tmux 擴展鍵、design language、報告格式等）。本 repo 不重述。
 
 ## 分工（一條規則只有一個家）
 
@@ -17,7 +17,7 @@
 | `SKELETON.md` | 方法論契約（原則／檔案地圖／同步儀式）；跨案**骨架**同版，本地增補以 `❗本 repo 增補` 標記 |
 | `AGENTS.md`（本檔）| agent 工作規則、協定、驗證方式（**引用 `SKELETON.md`**）|
 | `GOTCHAS.md` | 專案級坑與其行動（「遇到 X 就做 Y」）；**只由本檔引用** |
-| `opencode-config` 的 `memories/global/` | 跨專案通則 |
+| `opencode-config` 的 `playbooks/`、`experience/`、`memories/global/design-system/` | 跨專案通則（守／攻／經歷／設計） |
 
 **不要把坑寫進本檔，也不要把規則寫進 `GOTCHAS.md`** —— 兩處各寫一份必然漂移。
 
